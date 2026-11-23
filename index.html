@@ -115,8 +115,8 @@ tr.out td:first-child{text-decoration:line-through}
 .st{display:flex;flex-direction:column;gap:4px;padding:6px 0;border-top:1px solid var(--line)}
 .st:first-child{border-top:0}
 .st .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.crew{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--soft)}
-.mem{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:2px 8px;font-size:13px;white-space:nowrap}
+.crew{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--soft)}
+.mem{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-size:12px;line-height:1.35;white-space:nowrap}
 .mem small{color:var(--muted)}
 .mem.r3{background:#b3261e;color:#fff}
 .mem.r2{background:#1d7148;color:#fff}
@@ -458,7 +458,7 @@ function stationMeters(sf, withMembers, dragDate){
   return sf.stations.map(s => {
     const min = +s.min || 0, max = Math.max(min + 2, s.on, 1), short = s.on < min;
     return `<div class="st"${dragDate ? ` data-drop="${esc(s.name)}"` : ""}><div class="row"><b>${esc(s.name)}</b><span>${s.on} on duty · min ${min} ${short?pill(`Short ${min-s.on}`,"crit"):s.on===min?pill("At minimum","warn"):pill("Staffed","ok")}</span></div>
-      <div class="meter" aria-hidden="true"><div class="f${short?" crit":""}" style="width:${Math.min(100,s.on/max*100)}%"></div>${min?`<div class="min" style="left:${min/max*100}%"></div>`:""}</div>${withMembers ? `<div class="crew">${s.rows.filter(r=>r.on).map(r=>`<span class="mem${r.inbound?" in":r.alt?" alt":""}${r.moved?" mv":""}${r.rank==="FD-03"?" r3":r.rank==="FD-02"?" r2":r.rank==="FD-01"?" r1":r.rank==="FD-05"?" r5":""}"${dragDate && !r.inbound ? ` data-drag="${esc(r.name)}" data-from="${esc(r.station)}" tabindex="0" role="button" aria-label="Move ${esc(r.name)}"` : ""}><b>${esc(r.name)}</b> <small>${esc(r.rank||"")}${r.moved?" · from "+esc(r.moved):""}${r.inbound?" · "+esc(r.status):r.alt?" · "+esc(r.status):""}</small></span>`).join("") || `<span class="hint">Nobody on duty</span>`}</div>` : ""}</div>`;
+      <div class="meter" aria-hidden="true"><div class="f${short?" crit":""}" style="width:${Math.min(100,s.on/max*100)}%"></div>${min?`<div class="min" style="left:${min/max*100}%"></div>`:""}</div>${withMembers ? `<div class="crew">${s.rows.filter(r=>r.on).map(r=>`<span class="mem${r.inbound?" in":r.alt?" alt":""}${r.moved?" mv":""}${r.rank==="FD-03"?" r3":r.rank==="FD-02"?" r2":r.rank==="FD-01"?" r1":r.rank==="FD-05"?" r5":""}" title="${esc(r.name)}${r.rank?" · "+esc(r.rank):""}"${dragDate && !r.inbound ? ` data-drag="${esc(r.name)}" data-from="${esc(r.station)}" tabindex="0" role="button" aria-label="Move ${esc(r.name)}"` : ""}>${(()=>{ const x = [r.moved?"from "+esc(r.moved):"", (r.inbound||r.alt)?esc(r.status):""].filter(Boolean).join(" · "); return `<b>${esc(r.name)}</b>${x?` <small>${x}</small>`:""}`; })()}</span>`).join("") || `<span class="hint">Nobody on duty</span>`}</div>` : ""}</div>`;
   }).join("");
 }
 
