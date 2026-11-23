@@ -478,9 +478,8 @@ function vDashboard(){
     <div class="tile ${shortSt.length?"crit":"ok"}"><div class="k">On duty</div><div class="v">${sf.onDuty}<span style="font-size:20px;color:var(--muted)"> / ${sf.minTotal}</span></div><div class="s">${shortSt.length ? `${shortSt.length} compan${shortSt.length>1?"ies":"y"} below minimum` : "All companies at or above minimum"}</div></div>
     <div class="tile info"><div class="k">Off ${t === today() ? "today" : "this shift"}</div><div class="v">${off.length}</div><div class="s">${sf.rows.filter(r=>r.alt).length} vacation alternates working · ${sf.rows.filter(r=>r.inbound).length} coverage in</div></div>
     <div class="tile info"><div class="k">Training ${t === today() ? "today" : "this shift"}</div><div class="v">${tr.length}</div><div class="s">${tr.reduce((a,x)=>a+(+x.hours||0),0)} scheduled hours</div></div>
-    <div class="tile ${overdue?"crit":reps.length?"warn":"ok"}"><div class="k">Reports overdue</div><div class="v">${overdue}</div><div class="s">${reps.length-overdue} due within 7 days</div></div>
+    ${window.wxTile ? wxTile(t) : `<div class="tile ${overdue?"crit":reps.length?"warn":"ok"}"><div class="k">Reports overdue</div><div class="v">${overdue}</div><div class="s">${reps.length-overdue} due within 7 days</div></div>`}
   </div>
-  ${window.wxPanel ? wxPanel(t) : ""}
   <div class="grid g2">
     <section class="panel"><div class="ph"><h3>Staffing by company</h3><a href="#staffing">Full roster</a></div><div class="hint">Yellow = FD-05, red = FD-03, green = FD-02, black = FD-01. Blue outline = coverage in; gold outline = vacation alternate.</div>${stationMeters(sf, true)}</section>
     <section class="panel"><div class="ph"><h3>Off and coverage</h3><a href="#staffing">Details</a></div>
