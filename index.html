@@ -132,6 +132,11 @@ tr.out td:first-child{text-decoration:line-through}
 .mem.lifted{opacity:.35}
 .mem.r5.in,.mem.r5.alt,.mem.r3.in,.mem.r2.in,.mem.r1.in,.mem.r3.alt,.mem.r2.alt,.mem.r1.alt{border-width:3px}
 .mem.alt{border-color:var(--brass)}
+.rt{font-weight:600}
+.rt.r5{color:color-mix(in srgb,#f2c200 55%,var(--ink))}
+.rt.r3{color:var(--crit)}
+.rt.r2{color:var(--ok)}
+.rt.r1{color:var(--ink)}
 .meter{position:relative;height:10px;background:var(--soft);border-radius:5px;overflow:visible}
 .meter .f{height:100%;border-radius:5px;background:var(--ok)}
 .meter .f.crit{background:var(--crit)}
@@ -326,6 +331,7 @@ const sample = () => COLLS.some(c => state[c].some(d => d.sample)) || (state.set
 /* ---------- forms ---------- */
 const RANKS = ["FD-05","FD-04","FD-03","FD-02","FD-01"];
 const RANK_TITLE = { "FD-05":"District Chief", "FD-03":"Captain", "FD-02":"Lieutenant", "FD-01":"Firefighter" };
+const RANK_CLS = { "FD-05":"r5", "FD-03":"r3", "FD-02":"r2", "FD-01":"r1" };
 const F = {
   personnel:{ title:"Member", fields:[
     ["","Assignment","head"],
@@ -537,7 +543,7 @@ function vStaffing(){
   <section class="panel"><h3>Company summary</h3><div class="hint"><b class="w">Drag a member to another company to move them for ${fmtShort(d)} only (on a phone, press and hold, then drag), or tap a member to pick a company. Dashed outline = temporarily moved.</b> On-duty members are listed under each company. Red = FD-03, green = FD-02, black = FD-01, yellow = FD-05. Blue outline = coverage in (OT, detail, trade); gold outline = vacation alternate.</div>${stationMeters(sf, true, canWrite ? d : null)}</section>
   <div class="grid g2">${sf.stations.map(s=>`<section class="panel"><div class="ph"><h3>${esc(s.name)}</h3>${pill(`${s.on} / ${s.min||0}`, s.on < (+s.min||0) ? "crit" : "ok")}</div>
     <div class="tw"><table><thead><tr><th>Member</th><th>Unit</th><th>Position</th><th>Status</th><th></th></tr></thead><tbody>
-    ${s.rows.length ? s.rows.map(r=>`<tr class="${r.on?"":"out"}"><td><b>${esc(r.name)}</b><div class="hint">${esc(r.rank||"")}</div></td><td>${esc(r.unit||"")}</td><td>${esc(r.position||"")}${RANK_TITLE[r.rank] ? `<div class="hint">${RANK_TITLE[r.rank]}</div>` : ""}</td><td>${pill(r.status, r.on ? (r.inbound?"info":r.alt?"":"ok") : "warn")}</td><td>${r.exId?editBtn("staffing",r.exId):""}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">Nobody assigned to this company on ${esc(sf.shift)} platoon.</td></tr>`}
+    ${s.rows.length ? s.rows.map(r=>`<tr class="${r.on?"":"out"}"><td><b>${esc(r.name)}</b><div class="hint">${esc(r.rank||"")}</div></td><td>${esc(r.unit||"")}</td><td>${esc(r.position||"")}${RANK_TITLE[r.rank] ? `<div class="hint rt ${RANK_CLS[r.rank]}">${RANK_TITLE[r.rank]}</div>` : ""}</td><td>${pill(r.status, r.on ? (r.inbound?"info":r.alt?"":"ok") : "warn")}</td><td>${r.exId?editBtn("staffing",r.exId):""}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">Nobody assigned to this company on ${esc(sf.shift)} platoon.</td></tr>`}
     </tbody></table></div></section>`).join("")}</div>`;
 }
 
