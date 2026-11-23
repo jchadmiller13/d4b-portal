@@ -56,7 +56,25 @@ function bodyHtml(day){
 }
 
 let curDay = null;
-function paint(){ const el = document.getElementById("wxBody"); if (el && curDay) el.innerHTML = bodyHtml(curDay); }
+function tileInner(day){
+  const d = WX.data, i = d ? (d.daily.time||[]).indexOf(day) : -1;
+  const head = `<div class="k">Weather · ${esc(dowOf(day))} shift</div>`;
+  if (i < 0) return head + `<div class="v" style="font-size:20px">–</div><div class="s">${WX.err ? "Forecast unavailable · tap to retry" : d ? "No forecast yet for this day" : "Loading…"}</div>`;
+  const D = k => d.daily[k][i], code = D("weather_code");
+  const al = WX.alerts.length ? `<div class="s wxtal">⚠️ ${esc(WX.alerts.map(p => p.event).join(", "))}</div>` : "";
+  return head + `<div class="v"><span class="wxti" aria-hidden="true">${ICON(code)}</span>${r0(D("temperature_2m_max"))}°<span style="font-size:20px;color:var(--muted)"> / ${r0(D("temperature_2m_min"))}°</span></div>
+    <div class="s">${esc(CODES[code] || "")} · ${r0(D("precipitation_probability_max"))}% rain · wind ${r0(D("wind_speed_10m_max"))} mph</div>${al}`;
+}
+function paint(){
+  const t = document.getElementById("wxTile");
+  if (t && curDay){ t.innerHTML = tileInner(curDay); t.className = "tile wxtile " + (WX.alerts.length ? "crit" : "info"); }
+  const el = document.getElementById("wxBody"); if (el && curDay) el.innerHTML = bodyHtml(curDay);
+}
+window.wxTile = function(day){
+  curDay = day;
+  load(false);
+  return `<div class="tile wxtile ${WX.alerts.length ? "crit" : "info"}" id="wxTile" data-a="wxopen" role="button" tabindex="0" aria-label="Weather details">${tileInner(day)}</div>`;
+};
 
 window.wxPanel = function(day){
   curDay = day;
@@ -64,8 +82,17 @@ window.wxPanel = function(day){
   return `<section class="panel"><div class="ph"><h3>Weather · ${esc(dowOf(day))} shift</h3></div><div id="wxBody">${bodyHtml(day)}</div></section>`;
 };
 
-document.addEventListener("click", e => { const el = e.target.closest("[data-a='wxretry']"); if (el) load(true); });
-setInterval(() => { if (document.getElementById("wxBody")) load(false); }, 5*60*1000);
+function openWx(){
+  if (!curDay) return;
+  if (WX.err && !WX.data) load(true);
+  showModal(`<h2>Weather · ${esc(dowOf(curDay))}, ${esc(fmt(curDay))}</h2><div id="wxBody">${bodyHtml(curDay)}</div><div class="mf"><span></span><button class="btn pri" data-a="close">Done</button></div>`, true);
+}
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-a='wxretry']")) load(true);
+  if (e.target.closest("[data-a='wxopen']")) openWx();
+});
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.id === "wxTile"){ e.preventDefault(); openWx(); } });
+setInterval(() => { if (document.getElementById("wxTile") || document.getElementById("wxBody")) load(false); }, 5*60*1000);
 
 const css = document.createElement("style");
 css.textContent = `
@@ -82,6 +109,10 @@ css.textContent = `
 .wxhrs span{color:var(--muted)} .wxhrs i{font-style:normal;font-size:18px} .wxhrs small{color:var(--info,#1a5fb4)}
 .wxal{margin-bottom:10px;padding:8px 10px;border-radius:6px;background:#fdecea;border:1px solid #b3261e;color:#5c1410;font-size:14px}
 .wxal>div+div{margin-top:6px}
-.wxal span{color:#5c1410}`;
+.wxal span{color:#5c1410}
+.wxtile{cursor:pointer}
+.wxtile:hover{box-shadow:0 0 0 2px var(--line)}
+.wxti{font-size:30px;margin-right:6px;vertical-align:-3px}
+.wxtal{color:#b3261e;font-weight:600}`;
 document.head.appendChild(css);
 })();
