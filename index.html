@@ -763,6 +763,7 @@ function vSetup(){
   ${sample() ? `<section class="panel w"><h3>Sample data</h3><div class="hint">The portal opened with made-up members, leave, training and reports so you could see it working. Removing it deletes only those sample records; anything you've added stays.</div><div><button class="btn danger" data-a="clearsample">Remove sample data</button></div></section>` : ""}
   ${isAdmin ? `<section class="panel"><h3>Back up or move your data</h3><div class="hint">Saves every member, leave entry, vacation-book order, staffing change, training, assignment, report and setting to one file (portal-data.json). Export one regularly as a backup. The file includes members' cell numbers and email addresses, so store it somewhere private.</div><div><button class="btn pri" data-a="export">Export all data</button></div></section>` : ""}
   ${isAdmin ? vAccess() : `<section class="panel"><h3>Your access</h3><div class="hint">Signed in as ${esc(me.email)} · ${esc(ROLE_LABEL[me.role]||me.role)}. Ask the district chief if you need more access.</div></section>`}
+  ${isAdmin ? `<section class="panel"><h3>Upload roster</h3><div class="hint">When you update the District 4-B Master Roster workbook, upload it here to bring the app's member list up to date. You'll review every change before it's saved. Addresses, birth dates and emergency contacts are never uploaded.</div><div><button class="btn pri" data-a="rosterup">Upload roster</button></div></section>` : ""}
   ${isAdmin ? `<section class="panel"><h3>Load data from a file</h3><div class="hint">Choose a portal-data.json file made with "Export all data", either from the Claude version of the portal or from this app. Records with the same ID are overwritten; nothing else is deleted. Personal details (addresses, birth dates, emergency contacts) in the file are skipped.</div><label for="impData">Data file<input id="impData" type="file" accept=".json,application/json"></label><div id="impDataMsg" class="hint"></div></section>` : ""}`;
 }
 
@@ -1168,5 +1169,6 @@ async function startSession(u){
   FB.A.onAuthStateChanged(FB.auth, u => { if (u) startSession(u); else showLogin("signin"); });
 })();
 </script>
+<script src="roster.js"></script>
 </body>
 </html>
