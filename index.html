@@ -229,8 +229,8 @@ const dowOf = s => DOW[new Date(dnum(s)*864e5).getUTCDay()];
 const range = (a, b) => !b || b === a ? fmt(a) : `${fmtShort(a)} – ${fmt(b)}`;
 
 /* ---------- state ---------- */
-const COLLS = ["personnel","staffing","vacations","training","assignments","reports"];
-const state = { settings:null, vacbook:null, priv:[], personnel:[], staffing:[], vacations:[], training:[], assignments:[], reports:[] };
+const COLLS = ["personnel","staffing","vacations","training","assignments","reports","cancels"];
+const state = { settings:null, vacbook:null, priv:[], personnel:[], staffing:[], vacations:[], training:[], assignments:[], reports:[], cancels:[] };
 let db = null, canWrite = true, isAdmin = false, reqCo = "All", loaded = new Set(), loadNote = "", view = "dashboard";
 let staffDate = today(), vacYear = Number(today().slice(0,4)), vacSel = today(), vacFilter = "Pending", trainFilter = "Upcoming", asgFilter = "Active", rosterQ = "", rosterShift = "All";
 
@@ -572,13 +572,76 @@ function vVacation(){
       ...oc.extra.map(v => [v, pill("Off · outside slots","info")]),
       ...oc.alt.map((v,i) => [v, pill(`Alternate ${i+1} · Working`,"warn")]),
       ...oc.req.map(v => [v, pill("Requested","info")])
-    ].map(([v,tag])=>`<div class="li"><div><div class="t">${esc(v.name)}</div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div></div><div class="tools">${tag}${editBtn("vacations",v.id)}</div></div>`).join("") : empty("Nobody is on vacation this day.")}</div>
+    ].map(([v,tag])=>`<div class="li"><div><div class="t">${esc(v.name)}</div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div></div><div class="tools">${tag}${cancelBtn(v,vacSel)}${editBtn("vacations",v.id)}</div></div>`).join("") : empty("Nobody is on vacation this day.")}</div>
     <div class="hint">Order follows the vacation book, top to bottom. New leave added here goes to the bottom of each day's list. If someone in slots 1–${maxOff||6} comes off, the alternates move up.</div>
     <div class="w"><button class="btn sm" data-a="add" data-c="vacations" data-start="${vacSel}">Add leave starting this day</button></div></section>
+  ${cancelPanel()}
   <section class="panel"><div class="ph"><h3>Leave requests</h3><div class="seg">${["Pending","Approved","Denied","All"].map(f=>`<button class="${f===vacFilter?"on":""}" data-a="vf" data-f="${f}">${f}</button>`).join("")}</div></div>
     <div class="list">${list.length ? list.map(v=>`<div class="li"><div><div class="t">${esc(v.name)} <span class="sh">${esc(v.shift||"")}</span></div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}${v.note?` · ${esc(v.note)}`:""}</div></div>
       <div class="tools">${v.status==="Requested" && canWrite ? `<button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Approved">Approve</button><button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Denied">Deny</button>` : pill(v.status, v.status==="Approved"?"ok":v.status==="Denied"?"crit":"warn")}${editBtn("vacations",v.id)}</div></div>`).join("") : empty(`No ${vacFilter==="All"?"":vacFilter.toLowerCase()+" "}leave in ${y}.`)}</div></section>
   </div>`;
+}
+
+/* ---------- cancel-leave requests ---------- */
+const myName = () => { try { return (state.personnel.find(p => (p.email||"").toLowerCase() === me.email) || {}).name || ""; } catch(e){ return ""; } };
+const pendingCancel = (vid, d) => state.cancels.find(c => c.vacId === vid && c.status === "Requested" && (c.scope === "all" || c.date === d));
+function cancelBtn(v, d){
+  if (!v || v.status !== "Approved") return "";
+  if (pendingCancel(v.id, d)) return pill("Cancel requested","warn");
+  if (v.name !== myName() && !canWrite) return "";
+  return `<button class="btn sm" data-a="creq" data-id="${esc(v.id)}" data-d="${d}">Request cancel</button>`;
+}
+function cancelPanel(){
+  const recent = c => c.status === "Requested" || (isDate(c.decided) && dnum(today()) - dnum(c.decided) <= 14);
+  const list = state.cancels.filter(c => canWrite ? recent(c) : c.by === me.email)
+    .sort((a,b) => (a.status==="Requested"?0:1) - (b.status==="Requested"?0:1) || (b.added||0) - (a.added||0));
+  if (!list.length && !canWrite) return "";
+  const n = state.cancels.filter(c => c.status === "Requested").length;
+  const when = c => c.scope === "all" ? "all of " + range(c.start, c.end) : `${dowOf(c.date)}, ${fmt(c.date)}`;
+  const who = c => c.byName === c.name ? "" : ` · asked by ${esc(c.byName || c.by)}`;
+  return `<section class="panel"><div class="ph"><h3>Cancel requests</h3>${n ? pill(`${n} pending`,"warn") : ""}</div>
+    <div class="list">${list.length ? list.map(c => `<div class="li"><div><div class="t">${esc(c.name)}</div><div class="d">${esc(c.type||"Vacation")} · ${when(c)}${who(c)}${c.note ? ` · ${esc(c.note)}` : ""}</div></div>
+      <div class="tools">${c.status === "Requested" && canWrite ? `<button class="btn sm pri" data-a="cdec" data-id="${esc(c.id)}" data-s="Approved">Approve</button><button class="btn sm" data-a="cdec" data-id="${esc(c.id)}" data-s="Denied">Deny</button>` : pill(c.status === "Requested" ? "Pending" : c.status === "Approved" ? "Cancelled" : "Denied", c.status === "Approved" ? "ok" : c.status === "Denied" ? "crit" : "warn")}</div></div>`).join("") : empty("No cancel requests.")}</div></section>`;
+}
+function openCancel(id, d){
+  const v = state.vacations.find(x => x.id === id); if (!v) return;
+  const multi = v.end && v.end !== v.start;
+  modalCtx = { cancel:{ v, d, multi } };
+  showModal(`<h2>Request to cancel leave</h2>
+    <div class="hint"><b>${esc(v.name)}</b> · ${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div>
+    ${multi ? `<label for="c_scope">What to cancel<select id="c_scope"><option value="day">Just ${dowOf(d)}, ${fmt(d)}</option><option value="all">All of ${range(v.start,v.end)}</option></select></label>` : `<div class="hint">Day: ${dowOf(d)}, ${fmt(d)}</div>`}
+    <label for="c_note">Note (optional)<textarea id="c_note"></textarea></label>
+    <div class="hint">An Editor will approve or deny this. The leave stays on the book until it's approved.</div>
+    <div class="err" id="cerr"></div>
+    <div class="mf"><span></span><div class="tools"><button class="btn" data-a="close">Close</button><button class="btn pri" data-a="csend">Send request</button></div></div>`);
+}
+async function sendCancel(btn){
+  const { v, d, multi } = modalCtx.cancel;
+  const data = { vacId:v.id, name:v.name, date:d, scope: multi ? $("#c_scope").value : "all", start:v.start, end:v.end || v.start, type:v.type || "Vacation", note:$("#c_note").value.trim(), by:me.email, byName:myName(), status:"Requested", added:Date.now() };
+  btn.disabled = true;
+  try { if (!db) throw 0; await db.collection("cancels").doc().set(data); closeModal(); toast("Cancel request sent"); }
+  catch(e){ btn.disabled = false; $("#cerr").textContent = e && e.code === "invalid_argument" ? "The request couldn't be sent. Make sure you're signed in with the email on your roster entry." : writeErr(e); }
+}
+async function decideCancel(id, s, btn){
+  const c = state.cancels.find(x => x.id === id); if (!c) return;
+  btn.disabled = true;
+  try {
+    if (!db) throw 0;
+    if (s === "Approved"){
+      const covers = x => x.start <= c.date && (x.end || x.start) >= c.date;
+      let v = state.vacations.find(x => x.id === c.vacId);
+      if (c.scope !== "all" && v && !covers(v)) v = state.vacations.find(x => x.name === c.name && x.status === "Approved" && covers(x));
+      if (v && v.status === "Approved"){
+        const st = v.start, en = v.end || v.start, d = c.date, ref = db.collection("vacations").doc(v.id);
+        if (c.scope === "all" || st === en) await ref.update({ status:"Cancelled" });
+        else if (d === st) await ref.update({ start:addDays(d, 1) });
+        else if (d === en) await ref.update({ end:addDays(d, -1) });
+        else if (d > st && d < en){ const { id:_, ...rest } = v; await ref.update({ end:addDays(d, -1) }); await db.collection("vacations").doc().set({ ...rest, start:addDays(d, 1), end:en }); }
+      }
+    }
+    await db.collection("cancels").doc(id).update({ status:s, decidedBy:me.email, decided:today() });
+    toast(s === "Approved" ? "Leave cancelled" : "Cancel request denied");
+  } catch(e){ btn.disabled = false; toast(writeErr(e)); }
 }
 
 function openDay(d){
@@ -586,7 +649,7 @@ function openDay(d){
   const cs = kg ? state.personnel.filter(p => String(p.csGroup) === String(kg)) : [];
   const tr = state.training.filter(x => x.date === d && x.status !== "Cancelled");
   const ex = state.staffing.filter(x => x.date === d);
-  const row = (name, sub, tag, c, id) => `<div class="li"><div><div class="t">${esc(name)}</div>${sub?`<div class="d">${sub}</div>`:""}</div><div class="tools">${tag}${c&&id?editBtn(c,id):""}</div></div>`;
+  const row = (name, sub, tag, c, id, x="") => `<div class="li"><div><div class="t">${esc(name)}</div>${sub?`<div class="d">${sub}</div>`:""}</div><div class="tools">${tag}${x}${c&&id?editBtn(c,id):""}</div></div>`;
   modalCtx = { day:d };
   showModal(`<div class="mf" style="align-items:center"><button class="btn sm" data-a="dstep" data-n="-1" aria-label="Previous day">‹ Prev</button><span class="hint">${esc(shiftOn(d))} platoon day</span><button class="btn sm" data-a="dstep" data-n="1" aria-label="Next day">Next ›</button></div>
     <h2>${dowOf(d)}, ${fmt(d)}</h2>
@@ -594,9 +657,9 @@ function openDay(d){
       <div class="tile ${maxOff && oc.appr.length>=maxOff?"crit":"info"}"><div class="k">Vacation</div><div class="v">${oc.appr.length}<span style="font-size:18px;color:var(--muted)"> / ${maxOff||"–"}</span></div><div class="s">${oc.alt.length} alternate${oc.alt.length===1?"":"s"}</div></div>
       <div class="tile ${sf.stations.some(x=>x.on<(+x.min||0))?"crit":"ok"}"><div class="k">On duty</div><div class="v">${sf.onDuty}<span style="font-size:18px;color:var(--muted)"> / ${sf.minTotal}</span></div><div class="s">${kg?`City Shift Group ${kg} off`:"&nbsp;"}</div></div>
     </div>
-    <section><h3>Vacation slots</h3><div class="list">${oc.appr.length ? oc.appr.map((v,i)=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill(`Slot ${i+1}`,"ok"), "vacations", v.id)).join("") : empty("Nobody on vacation.")}</div></section>
-    ${oc.extra.length ? `<section><h3>Also off · outside the ${maxOff} slots</h3><div class="list">${oc.extra.map(v=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill("Extra","info"), "vacations", v.id)).join("")}</div></section>` : ""}
-    ${oc.alt.length ? `<section><h3>Alternates (working)</h3><div class="list">${oc.alt.map((v,i)=>row(v.name, esc(range(v.start,v.end)), pill(`Alternate ${i+1}`,"warn"), "vacations", v.id)).join("")}</div></section>` : ""}
+    <section><h3>Vacation slots</h3><div class="list">${oc.appr.length ? oc.appr.map((v,i)=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill(`Slot ${i+1}`,"ok"), "vacations", v.id, cancelBtn(v,d))).join("") : empty("Nobody on vacation.")}</div></section>
+    ${oc.extra.length ? `<section><h3>Also off · outside the ${maxOff} slots</h3><div class="list">${oc.extra.map(v=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill("Extra","info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
+    ${oc.alt.length ? `<section><h3>Alternates (working)</h3><div class="list">${oc.alt.map((v,i)=>row(v.name, esc(range(v.start,v.end)), pill(`Alternate ${i+1}`,"warn"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
     ${oc.req.length ? `<section><h3>Pending requests</h3><div class="list">${oc.req.map(v=>row(v.name, esc(range(v.start,v.end)), pill("Requested","info"), "vacations", v.id)).join("")}</div></section>` : ""}
     ${kg ? `<section><h3>City Shift Group ${kg} off</h3><div class="list">${cs.length ? cs.map(p=>row(p.name, esc([p.rank,p.unit].filter(Boolean).join(" · ")), pill("City Shift Group","")) ).join("") : empty("No members in this City Shift Group.")}</div></section>` : ""}
     ${ex.length ? `<section><h3>Staffing changes</h3><div class="list">${ex.map(x=>row(x.name, esc([x.station,x.note].filter(Boolean).join(" · ")), pill(x.kind, KINDS[x.kind]>0?"info":"warn"), "staffing", x.id)).join("")}</div></section>` : ""}
@@ -810,6 +873,9 @@ document.addEventListener("click", async e => {
   if (a === "af"){ asgFilter = el.dataset.f; return render(); }
   if (a === "rsf"){ rosterShift = el.dataset.f; return render(); }
   if (a === "vset") return quick("vacations", el.dataset.id, { status: el.dataset.s }, el.dataset.s === "Approved" ? "Leave approved" : "Leave denied");
+  if (a === "creq") return openCancel(el.dataset.id, el.dataset.d);
+  if (a === "csend") return sendCancel(el);
+  if (a === "cdec") return decideCancel(el.dataset.id, el.dataset.s, el);
   if (a === "tdone") return quick("training", el.dataset.id, { status:"Completed" }, "Marked complete");
   if (a === "rsub"){ const r = state.reports.find(x => x.id === el.dataset.id); if (!r) return;
     const step = { Daily:[0,1], Weekly:[0,7], Monthly:[1,0], Quarterly:[3,0], Annual:[12,0] }[r.frequency];
