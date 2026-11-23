@@ -353,7 +353,7 @@ const F = {
   vacations:{ title:"Leave request", fields:[
     ["name","Member","select",{opts:()=>["",...names()],req:1}], ["type","Leave type","select",{opts:["Vacation","Day exchange","City Shift Group flex","Holiday","Comp time","Personal","FMLA","Military","Bereavement"]}],
     ["start","First day","date",{req:1}], ["end","Last day","date"],
-    ["status","Status","select",{opts:["Requested","Approved","Denied"]}], ["note","Note","textarea"] ]},
+    ["status","Status","select",{opts:()=>isAdmin?["Requested","Approved","Denied"]:[]}], ["note","Note","textarea"] ]},
   training:{ title:"Training session", fields:[
     ["title","Title","text",{req:1,full:1}], ["date","Date","date",{req:1}], ["time","Start time","time"],
     ["category","Category","select",{opts:["Fire suppression","EMS","Hazmat","Technical rescue","Driver/Operator","Officer development","Safety","Other"]}],
@@ -578,7 +578,7 @@ function vVacation(){
   ${cancelPanel()}
   <section class="panel"><div class="ph"><h3>Leave requests</h3><div class="seg">${["Pending","Approved","Denied","All"].map(f=>`<button class="${f===vacFilter?"on":""}" data-a="vf" data-f="${f}">${f}</button>`).join("")}</div></div>
     <div class="list">${list.length ? list.map(v=>`<div class="li"><div><div class="t">${esc(v.name)} <span class="sh">${esc(v.shift||"")}</span></div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}${v.note?` · ${esc(v.note)}`:""}</div></div>
-      <div class="tools">${v.status==="Requested" && canWrite ? `<button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Approved">Approve</button><button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Denied">Deny</button>` : pill(v.status, v.status==="Approved"?"ok":v.status==="Denied"?"crit":"warn")}${editBtn("vacations",v.id)}</div></div>`).join("") : empty(`No ${vacFilter==="All"?"":vacFilter.toLowerCase()+" "}leave in ${y}.`)}</div></section>
+      <div class="tools">${v.status==="Requested" && isAdmin ? `<button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Approved">Approve</button><button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Denied">Deny</button>` : pill(v.status, v.status==="Approved"?"ok":v.status==="Denied"?"crit":"warn")}${editBtn("vacations",v.id)}</div></div>`).join("") : empty(`No ${vacFilter==="All"?"":vacFilter.toLowerCase()+" "}leave in ${y}.`)}</div></section>
   </div>`;
 }
 
@@ -601,7 +601,7 @@ function cancelPanel(){
   const who = c => c.byName === c.name ? "" : ` · asked by ${esc(c.byName || c.by)}`;
   return `<section class="panel"><div class="ph"><h3>Cancel requests</h3>${n ? pill(`${n} pending`,"warn") : ""}</div>
     <div class="list">${list.length ? list.map(c => `<div class="li"><div><div class="t">${esc(c.name)}</div><div class="d">${esc(c.type||"Vacation")} · ${when(c)}${who(c)}${c.note ? ` · ${esc(c.note)}` : ""}</div></div>
-      <div class="tools">${c.status === "Requested" && canWrite ? `<button class="btn sm pri" data-a="cdec" data-id="${esc(c.id)}" data-s="Approved">Approve</button><button class="btn sm" data-a="cdec" data-id="${esc(c.id)}" data-s="Denied">Deny</button>` : pill(c.status === "Requested" ? "Pending" : c.status === "Approved" ? "Cancelled" : "Denied", c.status === "Approved" ? "ok" : c.status === "Denied" ? "crit" : "warn")}</div></div>`).join("") : empty("No cancel requests.")}</div></section>`;
+      <div class="tools">${c.status === "Requested" && isAdmin ? `<button class="btn sm pri" data-a="cdec" data-id="${esc(c.id)}" data-s="Approved">Approve</button><button class="btn sm" data-a="cdec" data-id="${esc(c.id)}" data-s="Denied">Deny</button>` : pill(c.status === "Requested" ? "Pending" : c.status === "Approved" ? "Cancelled" : "Denied", c.status === "Approved" ? "ok" : c.status === "Denied" ? "crit" : "warn")}</div></div>`).join("") : empty("No cancel requests.")}</div></section>`;
 }
 function openCancel(id, d){
   const v = state.vacations.find(x => x.id === id); if (!v) return;
@@ -611,7 +611,7 @@ function openCancel(id, d){
     <div class="hint"><b>${esc(v.name)}</b> · ${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div>
     ${multi ? `<label for="c_scope">What to cancel<select id="c_scope"><option value="day">Just ${dowOf(d)}, ${fmt(d)}</option><option value="all">All of ${range(v.start,v.end)}</option></select></label>` : `<div class="hint">Day: ${dowOf(d)}, ${fmt(d)}</div>`}
     <label for="c_note">Note (optional)<textarea id="c_note"></textarea></label>
-    <div class="hint">An Editor will approve or deny this. The leave stays on the book until it's approved.</div>
+    <div class="hint">An Admin will approve or deny this. The leave stays on the book until it's approved.</div>
     <div class="err" id="cerr"></div>
     <div class="mf"><span></span><div class="tools"><button class="btn" data-a="close">Close</button><button class="btn pri" data-a="csend">Send request</button></div></div>`);
 }
