@@ -101,6 +101,11 @@ body.locked nav,body.locked #bmeta{display:none}
 .li .t{font-weight:600}
 .li .d{font-size:13px;color:var(--muted)}
 .empty{color:var(--muted);font-size:14px;padding:6px 0}
+/* Other changes on the Dashboard: one bordered box per type */
+.ocg{border:1px solid var(--line);border-radius:6px;padding:8px 12px 4px;margin-top:8px}
+.ocg-h{display:flex;justify-content:space-between;align-items:baseline;font-size:17px;font-weight:700;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.ocg-h .hint{font-weight:600}
+.ocg .li:first-child{border-top:0}
 
 .tw{overflow-x:auto;margin:0 -16px;padding:0 16px}
 table{border-collapse:collapse;width:100%;font-size:14px}
@@ -581,7 +586,7 @@ function offGroups(d, sf){
     other.forEach(r => { const k = key(r); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
     const rank = k => { const i = ORDER.indexOf(k); return i < 0 ? 99 : i; };
     const keys = [...groups.keys()].sort((x,y) => rank(x) - rank(y) || x.localeCompare(y));
-    h += grp(`Other changes`, other.length, keys.map(k => `<div class="hint" style="font-weight:600;padding-top:6px">${esc(k)} · ${groups.get(k).length}</div>` + groups.get(k).map(r => item(r.name, r.moved && r.on ? `Moved ${r.moved} → ${r.station}` : r.status, r.on ? "info" : "warn")).join("")).join(""));
+    h += grp(`Other changes`, other.length, keys.map(k => `<div class="ocg"><div class="ocg-h"><span>${esc(k)}</span><span class="hint">${groups.get(k).length}</span></div><div class="list">` + groups.get(k).map(r => item(r.name, r.moved && r.on ? `Moved ${r.moved} → ${r.station}` : r.status, r.on ? "info" : "warn")).join("") + `</div></div>`).join(""));
   }
   return h;
 }
