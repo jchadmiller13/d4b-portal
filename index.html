@@ -290,7 +290,7 @@ function staffFor(d){
   if (kg) state.personnel.filter(p => p.shift === sh && String(p.csGroup) === String(kg)).forEach(p => off.set(p.name, { why:"City Shift Group off", src:"kelly" }));
   const lo = leaveOrder(d), altOf = new Map();
   lo.alt.forEach((v,i) => altOf.set(v.name, i+1));
-  lo.off.concat(lo.extra, lo.flex, lo.other).forEach(v => off.set(v.name, { why: v.type || "Vacation", src:"vac" }));
+  lo.off.concat(lo.extra, lo.flex, lo.other).forEach(v => off.set(v.name, { why: leaveLabel(v), src:"vac" }));
   const ex = state.staffing.filter(x => x.date === d);
   ex.filter(x => KINDS[x.kind] < 0).forEach(x => off.set(x.name, { why: x.kind, src:"ex", id:x.id }));
   const rows = [];
@@ -330,6 +330,10 @@ function leaveOrder(d){
   return { off: slotted.slice(0, max), extra, flex, other, alt: slotted.slice(max), req: state.vacations.filter(v => v.status === "Requested" && cover(v)) };
 }
 const NON_SLOT = ["Admin Duty","Authorized Leave"];
+/* leave type for display, with Day or Night added to a part-shift vacation */
+const leaveLabel = v => { const t = v.type || "Vacation"; return t === "Vacation" && (v.portion === "Day" || v.portion === "Night") ? `${t} (${v.portion})` : t; };
+/* the Day / Night / Full choice only shows when the leave type is Vacation */
+function syncPortion(){ const t = $("#f_type"), p = $("#f_portion"); if (!t || !p) return; p.closest("label").style.display = t.value === "Vacation" ? "" : "none"; }
 function offCount(d){ const o = leaveOrder(d); return { appr:o.off, extra:o.extra, flex:o.flex, other:o.other, alt:o.alt, req:o.req }; }
 
 function repState(r){
@@ -379,6 +383,7 @@ const F = {
     ["unit","Unit","text"], ["position","Riding position","text"], ["note","Note","textarea"] ]},
   vacations:{ title:"Leave request", fields:[
     ["name","Member","select",{opts:()=>["",...names()],req:1}], ["type","Leave type","select",{opts:["Vacation","Day exchange","City Shift Group flex","Holiday","Comp time","Personal","FMLA","Military","Bereavement","Admin Duty","Authorized Leave"]}],
+    ["portion","Day, Night or Full","select",{opts:["Full","Day","Night"]}],
     ["start","First day","date",{req:1}], ["end","Last day","date"],
     ["outsideSlots","Outside the daily vacation slots (scheduled in another district)","select",{opts:["No","Yes"],full:1}],
     ["status","Status","select",{opts:()=>isAdmin?["Requested","Approved","Denied"]:[]}], ["note","Note","textarea"] ]},
@@ -428,6 +433,7 @@ function openForm(coll, doc, defaults){
     <div class="err" id="ferr"></div>
     <div class="mf"><div>${doc && canWrite ? `<button class="btn danger" data-a="del">Delete</button>` : ""}</div>
     <div class="tools"><button class="btn" data-a="close">Cancel</button>${canWrite?`<button class="btn pri" data-a="save">Save</button>`:""}</div></div>`);
+  if (coll === "vacations") syncPortion();
 }
 async function saveForm(){
   const { coll, id } = modalCtx, spec = F[coll];
@@ -442,7 +448,7 @@ async function saveForm(){
   }
   if (modalCtx.extraKeys.length){ data.extra = {}; modalCtx.extraKeys.forEach((k,i) => data.extra[k] = $("#x_"+i).value); }
   if (data.end && data.start && data.end < data.start){ $("#ferr").textContent = "The end date is before the start date."; return; }
-  if (coll === "vacations"){ data.shift = (person(data.name)||{}).shift || S().homeShift || ""; if (!data.added) data.added = Date.now(); }
+  if (coll === "vacations"){ if (data.type !== "Vacation") delete data.portion; data.shift = (person(data.name)||{}).shift || S().homeShift || ""; if (!data.added) data.added = Date.now(); }
   try {
     if (!db) throw new Error("offline");
     const ref = id ? db.collection(coll).doc(id) : db.collection(coll).doc();
@@ -530,7 +536,7 @@ function vDashboard(){
   </div>
   <section class="panel"><div class="ph"><h3>Member requirements</h3><a href="#requirements">All requirements</a></div>${dashReq()}</section>
   <section class="panel"><div class="ph"><h3>Leave starting in the next 14 days</h3><a href="#vacation">Vacation schedule${pend?` · ${pend} pending`:""}</a></div>
-    <div class="list">${upV.length ? upV.map(v=>`<div class="li"><div><div class="t">${esc(v.name)} <span class="sh">${esc(v.shift||"")}</span></div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div></div>${pill("Approved","ok")}</div>`).join("") : empty("No approved leave starts in the next two weeks.")}</div></section>`;
+    <div class="list">${upV.length ? upV.map(v=>`<div class="li"><div><div class="t">${esc(v.name)} <span class="sh">${esc(v.shift||"")}</span></div><div class="d">${esc(leaveLabel(v))} · ${range(v.start,v.end)}</div></div>${pill("Approved","ok")}</div>`).join("") : empty("No approved leave starts in the next two weeks.")}</div></section>`;
 }
 
 function dashReq(){
@@ -608,12 +614,12 @@ function vVacation(){
       ...oc.other.map(v => [v, pill("Off · "+v.type,"info")]),
       ...oc.alt.map((v,i) => [v, pill(`Alternate ${i+1} · Working`,"warn")]),
       ...oc.req.map(v => [v, pill("Requested","info")])
-    ].map(([v,tag])=>`<div class="li"><div><div class="t">${esc(v.name)}</div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div></div><div class="tools">${tag}${cancelBtn(v,vacSel)}${editBtn("vacations",v.id)}</div></div>`).join("") : empty("Nobody is on vacation this day.")}</div>
+    ].map(([v,tag])=>`<div class="li"><div><div class="t">${esc(v.name)}</div><div class="d">${esc(leaveLabel(v))} · ${range(v.start,v.end)}</div></div><div class="tools">${tag}${cancelBtn(v,vacSel)}${editBtn("vacations",v.id)}</div></div>`).join("") : empty("Nobody is on vacation this day.")}</div>
     <div class="hint">Order follows the vacation book, top to bottom. New leave added here goes to the bottom of each day's list. If someone in slots 1–${maxOff||6} comes off, the alternates move up.</div>
     <div class="w"><button class="btn sm" data-a="add" data-c="vacations" data-start="${vacSel}">Add leave starting this day</button></div></section>
   ${cancelPanel()}
   <section class="panel"><div class="ph"><h3>Leave requests</h3><div class="seg">${["Pending","Approved","Denied","All"].map(f=>`<button class="${f===vacFilter?"on":""}" data-a="vf" data-f="${f}">${f}</button>`).join("")}</div></div>
-    <div class="list">${list.length ? list.map(v=>`<div class="li"><div><div class="t">${esc(v.name)} <span class="sh">${esc(v.shift||"")}</span></div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}${v.note?` · ${esc(v.note)}`:""}</div></div>
+    <div class="list">${list.length ? list.map(v=>`<div class="li"><div><div class="t">${esc(v.name)} <span class="sh">${esc(v.shift||"")}</span></div><div class="d">${esc(leaveLabel(v))} · ${range(v.start,v.end)}${v.note?` · ${esc(v.note)}`:""}</div></div>
       <div class="tools">${v.status==="Requested" && isAdmin ? `<button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Approved">Approve</button><button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Denied">Deny</button>` : pill(v.status, v.status==="Approved"?"ok":v.status==="Denied"?"crit":"warn")}${editBtn("vacations",v.id)}</div></div>`).join("") : empty(`No ${vacFilter==="All"?"":vacFilter.toLowerCase()+" "}leave in ${y}.`)}</div></section>
   </div>`;
 }
@@ -644,7 +650,7 @@ function openCancel(id, d){
   const multi = v.end && v.end !== v.start;
   modalCtx = { cancel:{ v, d, multi } };
   showModal(`<h2>Request to cancel leave</h2>
-    <div class="hint"><b>${esc(v.name)}</b> · ${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div>
+    <div class="hint"><b>${esc(v.name)}</b> · ${esc(leaveLabel(v))} · ${range(v.start,v.end)}</div>
     ${multi ? `<label for="c_scope">What to cancel<select id="c_scope"><option value="day">Just ${dowOf(d)}, ${fmt(d)}</option><option value="all">All of ${range(v.start,v.end)}</option></select></label>` : `<div class="hint">Day: ${dowOf(d)}, ${fmt(d)}</div>`}
     <label for="c_note">Note (optional)<textarea id="c_note"></textarea></label>
     <div class="hint">An Admin will approve or deny this. The leave stays on the book until it's approved.</div>
@@ -693,8 +699,8 @@ function openDay(d){
       <div class="tile ${maxOff && oc.appr.length>=maxOff?"crit":"info"}"><div class="k">Vacation</div><div class="v">${oc.appr.length}<span style="font-size:18px;color:var(--muted)"> / ${maxOff||"–"}</span></div><div class="s">${oc.alt.length} alternate${oc.alt.length===1?"":"s"}</div></div>
       <div class="tile ${sf.stations.some(x=>x.on<(+x.min||0))?"crit":"ok"}"><div class="k">On duty</div><div class="v">${sf.onDuty}<span style="font-size:18px;color:var(--muted)"> / ${sf.minTotal}</span></div><div class="s">${kg?`City Shift Group ${kg} off`:"&nbsp;"}</div></div>
     </div>
-    <section><h3>Vacation slots</h3><div class="list">${oc.appr.length ? oc.appr.map((v,i)=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill(`Slot ${i+1}`,"ok"), "vacations", v.id, cancelBtn(v,d))).join("") : empty("Nobody on vacation.")}</div></section>
-    ${oc.extra.length ? `<section><h3>Also off · outside the ${maxOff} slots</h3><div class="list">${oc.extra.map(v=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill(v.outsideSlots === "Yes" ? "Other district" : "Extra","info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
+    <section><h3>Vacation slots</h3><div class="list">${oc.appr.length ? oc.appr.map((v,i)=>row(v.name, esc(leaveLabel(v)+" · "+range(v.start,v.end)), pill(`Slot ${i+1}`,"ok"), "vacations", v.id, cancelBtn(v,d))).join("") : empty("Nobody on vacation.")}</div></section>
+    ${oc.extra.length ? `<section><h3>Also off · outside the ${maxOff} slots</h3><div class="list">${oc.extra.map(v=>row(v.name, esc(leaveLabel(v)+" · "+range(v.start,v.end)), pill(v.outsideSlots === "Yes" ? "Other district" : "Extra","info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
     ${oc.other.length ? `<section><h3>Off · Admin Duty / Authorized Leave</h3><div class="list">${oc.other.map(v=>row(v.name, esc(range(v.start,v.end)), pill(v.type,"info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
     ${oc.flex.length ? `<section><h3>Off · City Shift Group flex</h3><div class="list">${oc.flex.map(v=>row(v.name, esc(range(v.start,v.end)), pill("City Shift Group flex","info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
     ${oc.alt.length ? `<section><h3>Alternates (working)</h3><div class="list">${oc.alt.map((v,i)=>row(v.name, esc(range(v.start,v.end)), pill(`Alternate ${i+1}`,"warn"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
@@ -939,6 +945,7 @@ document.addEventListener("change", e => {
   if (e.target.id === "staffDate" && isDate(e.target.value)){ staffDate = e.target.value; render(); }
   if (e.target.id === "impFile") readWorkbook(e.target.files[0]);
   if (e.target.id === "impSheet") loadSheet(e.target.value);
+  if (e.target.id === "f_type") syncPortion();
   if (e.target.id === "reqCo"){ reqCo = e.target.value; render(); }
 });
 async function quick(coll, id, upd, msg){
