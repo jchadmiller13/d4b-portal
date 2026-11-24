@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TFD District 4-B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+<style>
+/* Layout idea: a dark command bar with a red apparatus stripe, a scrolling tab rail, then dense scan-first panels on a quiet grey field. */
+:root{
+  --bg:#eff1f4; --surface:#ffffff; --ink:#15181e; --muted:#5b6370; --line:#dde1e7; --soft:#f6f7f9;
+  --accent:#b3261e; --accent-ink:#ffffff; --brass:#a87418;
+  --bar:#1a1d24; --bar-ink:#f2f3f5; --bar-muted:#a3a9b4;
+  --ok:#1d7148; --ok-bg:#e2f2e9; --warn:#8f5b00; --warn-bg:#fbefd4; --crit:#b3261e; --crit-bg:#fbe4e2; --info:#2b5a9a; --info-bg:#e3ecf8;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111318; --surface:#1a1d23; --ink:#e7e9ed; --muted:#9aa1ac; --line:#2b2f37; --soft:#20242b;
+    --accent:#d9473c; --accent-ink:#ffffff; --brass:#d3a24a;
+    --bar:#0b0c0f; --bar-ink:#eef0f3; --bar-muted:#8e95a1;
+    --ok:#5cc28f; --ok-bg:#16301f; --warn:#e0aa48; --warn-bg:#352a12; --crit:#f07a70; --crit-bg:#3a1917; --info:#86aee6; --info-bg:#182638;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111318; --surface:#1a1d23; --ink:#e7e9ed; --muted:#9aa1ac; --line:#2b2f37; --soft:#20242b;
+  --accent:#d9473c; --accent-ink:#ffffff; --brass:#d3a24a;
+  --bar:#0b0c0f; --bar-ink:#eef0f3; --bar-muted:#8e95a1;
+  --ok:#5cc28f; --ok-bg:#16301f; --warn:#e0aa48; --warn-bg:#352a12; --crit:#f07a70; --crit-bg:#3a1917; --info:#86aee6; --info-bg:#182638;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.02em;margin:0;text-wrap:balance}
+h2{font-size:22px;text-transform:uppercase}
+h3{font-size:17px;text-transform:uppercase;letter-spacing:.05em}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+/* command bar */
+.bar{background:var(--bar);color:var(--bar-ink);border-bottom:4px solid var(--accent)}
+.bar-in{max-width:1240px;margin:0 auto;padding:14px 16px 0;display:flex;flex-direction:column;gap:10px}
+.bar-top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
+.bar h1{font-size:28px;text-transform:uppercase}
+.bar .meta{color:var(--bar-muted);font-size:14px}
+.bar .meta b{color:var(--bar-ink);font-weight:600}
+.shiftchip{display:inline-block;background:var(--accent);color:var(--accent-ink);font-family:var(--display);font-weight:700;padding:0 8px;border-radius:3px;margin-left:4px;letter-spacing:.04em}
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+nav::-webkit-scrollbar{display:none}
+nav a{color:var(--bar-muted);text-decoration:none;font-family:var(--display);font-weight:600;font-size:16px;text-transform:uppercase;letter-spacing:.05em;padding:8px 12px 10px;white-space:nowrap;border-bottom:3px solid transparent}
+nav a:hover{color:var(--bar-ink)}
+nav a.on{color:var(--bar-ink);border-bottom-color:var(--brass)}
+
+main{max-width:1240px;margin:0 auto;padding:18px 16px 60px;display:flex;flex-direction:column;gap:16px}
+.banner{border-radius:6px;padding:10px 14px;font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.banner.info{background:var(--info-bg);color:var(--info)}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}
+.banner.crit{background:var(--crit-bg);color:var(--crit)}
+
+.head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:5px;padding:6px 12px;cursor:pointer;font-weight:500;font-size:14px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:3px 9px;font-size:13px}
+.btn.danger{color:var(--crit);border-color:var(--crit)}
+.linkbtn{background:none;border:0;padding:0;color:var(--info);cursor:pointer;text-decoration:underline;font-size:inherit}
+body.ro .w{display:none!important}
+body.locked nav,body.locked #bmeta{display:none}
+.login{max-width:440px;margin:24px auto;width:100%}
+#who button{background:none;border:1px solid var(--bar-muted);color:var(--bar-ink);border-radius:4px;padding:1px 8px;margin-left:6px;cursor:pointer;font-size:13px}
+
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+.tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.panel .ph{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.panel .ph a{font-size:13px;color:var(--info)}
+.tile{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--line);border-radius:8px;padding:12px 14px}
+.tile.ok{border-left-color:var(--ok)}.tile.warn{border-left-color:var(--warn)}.tile.crit{border-left-color:var(--crit)}.tile.info{border-left-color:var(--info)}
+.tile .k{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.tile .v{font-family:var(--display);font-size:38px;font-weight:700;line-height:1.05}
+.tile .s{font-size:13px;color:var(--muted)}
+
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap;background:var(--soft);color:var(--muted)}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.crit{background:var(--crit-bg);color:var(--crit)}.pill.info{background:var(--info-bg);color:var(--info)}
+.sh{display:inline-block;min-width:20px;text-align:center;font-family:var(--display);font-weight:700;border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:13px}
+
+.list{display:flex;flex-direction:column}
+.li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);align-items:flex-start}
+.li:first-child{border-top:0}
+.li .t{font-weight:600}
+.li .d{font-size:13px;color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;padding:6px 0}
+
+.tw{overflow-x:auto;margin:0 -16px;padding:0 16px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:2px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--soft)}
+tr.out td{color:var(--muted)}
+tr.out td:first-child{text-decoration:line-through}
+
+/* station staffing meters */
+.st{display:flex;flex-direction:column;gap:4px;padding:6px 0;border-top:1px solid var(--line)}
+.st:first-child{border-top:0}
+.st .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.st .row.lead{justify-content:flex-start}
+.crew{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--soft)}
+.mem{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-size:12px;line-height:1.35;white-space:nowrap}
+.mem small{color:var(--muted)}
+.mem.r3{background:#b3261e;color:#fff}
+.mem.r2{background:#1d7148;color:#fff}
+.mem.r5{background:#f2c200;color:#111;border-color:#c99f00}
+.mem.r5 small{color:#3a3000}
+.mem.r1{background:#111;color:#fff;border-color:#444}
+.mem.r3 small,.mem.r2 small,.mem.r1 small{color:rgba(255,255,255,.85)}
+.mem.in{border-color:var(--info)}
+.mem[data-drag]{cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.mem.mv{outline:2px dashed var(--brass);outline-offset:1px}
+.st.dropok{background:color-mix(in srgb,var(--brass) 18%,transparent);border-radius:6px}
+.ghost{position:fixed;z-index:40;pointer-events:none;opacity:.9;transform:translate(-50%,-120%);box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.mem.lifted{opacity:.35}
+.mem.r5.in,.mem.r5.alt,.mem.r3.in,.mem.r2.in,.mem.r1.in,.mem.r3.alt,.mem.r2.alt,.mem.r1.alt{border-width:3px}
+.mem.alt{border-color:var(--brass)}
+.rt{font-weight:600}
+.rt.r5{color:color-mix(in srgb,#f2c200 55%,var(--ink))}
+.rt.r3{color:var(--crit)}
+.rt.r2{color:var(--ok)}
+.rt.r1{color:var(--ink)}
+.meter{position:relative;height:10px;background:var(--soft);border-radius:5px;overflow:visible}
+.meter .f{height:100%;border-radius:5px;background:var(--ok)}
+.meter .f.crit{background:var(--crit)}
+.meter .min{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+
+/* vacation year */
+.year{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.mon{border:1px solid var(--line);border-radius:6px;padding:8px 10px 10px;background:var(--surface)}
+.mon h3{font-size:15px;margin-bottom:4px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal .dow{font-size:10px;color:var(--muted);text-align:center;font-weight:600}
+.day{aspect-ratio:1/1;border:1px solid transparent;border-radius:3px;background:var(--soft);font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:0;line-height:1.05;position:relative}
+.day small{font-size:8px;color:var(--muted);font-family:var(--display);font-weight:700}
+.day.l1{background:color-mix(in srgb,var(--info) 22%,var(--surface))}
+.day.l2{background:color-mix(in srgb,var(--info) 45%,var(--surface))}
+.day.l3{background:color-mix(in srgb,var(--info) 70%,var(--surface));color:#fff}
+.day.l3 small{color:#fff}
+.day.over{border-color:var(--crit);border-width:2px}
+.day.req::after{content:"";position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:var(--brass)}
+.day.off{opacity:.28}
+.day.blank{background:transparent;cursor:default}
+.day.today{outline:2px solid var(--ink);outline-offset:-1px}
+.day.sel{outline:2px solid var(--brass);outline-offset:-1px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:4px}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(10,12,16,.55);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto;z-index:20}
+.modal{background:var(--surface);border-radius:10px;width:100%;max-width:560px;padding:18px;display:flex;flex-direction:column;gap:14px;border-top:4px solid var(--accent)}
+.modal.wide{max-width:900px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px}
+.form .full{grid-column:1/-1}
+label{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+input,select,textarea{border:1px solid var(--line);background:var(--bg);border-radius:5px;padding:7px 9px;font-size:15px;text-transform:none;letter-spacing:0;font-weight:400;width:100%;min-width:0}
+textarea{min-height:64px;resize:vertical}
+.mf{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.err{color:var(--crit);font-size:13px}
+.fhead{grid-column:1/-1;font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:15px;border-bottom:1px solid var(--line);padding-top:6px;color:var(--ink)}
+.fhead.lock{color:var(--brass)}
+.cell2{display:flex;flex-direction:column;gap:2px;align-items:flex-start}
+select.inline{width:auto}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--bar);color:var(--bar-ink);padding:10px 16px;border-radius:6px;font-size:14px;z-index:30;max-width:90vw}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:5px 11px;cursor:pointer;font-size:13px}
+.seg button.on{background:var(--ink);color:var(--surface)}
+.hint{font-size:13px;color:var(--muted)}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:14px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body class="locked">
+<header class="bar">
+  <div class="bar-in">
+    <div class="bar-top">
+      <h1 id="bname">TFD District 4-B</h1>
+      <div class="meta" id="bmeta"></div>
+      <div class="meta" id="who"></div>
+    </div>
+    <nav id="nav">
+      <a href="#dashboard" data-v="dashboard">Dashboard</a>
+      <a href="#staffing" data-v="staffing">Daily Staffing</a>
+      <a href="#vacation" data-v="vacation">Vacation</a>
+      <a href="#training" data-v="training">Training</a>
+      <a href="#assignments" data-v="assignments">Special Assignments</a>
+      <a href="#reports" data-v="reports">Reports</a>
+      <a href="#requirements" data-v="requirements">Member Requirements</a>
+      <a href="#roster" data-v="roster">Roster</a>
+      <a href="#setup" data-v="setup">Setup</a>
+    </nav>
+  </div>
+</header>
+<main id="main"></main>
+<div id="modalRoot"></div>
+
+<script>
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const isoLocal = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => isoLocal(new Date());
+const dnum = s => { const [y,m,d] = String(s).split("-").map(Number); return Date.UTC(y, m-1, d) / 864e5; };
+const fromNum = n => { const t = new Date(n * 864e5); return `${t.getUTCFullYear()}-${pad(t.getUTCMonth()+1)}-${pad(t.getUTCDate())}`; };
+const addDays = (s, n) => fromNum(dnum(s) + n);
+const addMonths = (s, n) => { const [y,m,d] = s.split("-").map(Number); const t = new Date(Date.UTC(y, m-1+n, 1)); const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth()+1, 0)).getUTCDate(); return `${t.getUTCFullYear()}-${pad(t.getUTCMonth()+1)}-${pad(Math.min(d,last))}`; };
+const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s||""));
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const fmt = s => { if (!isDate(s)) return esc(s||""); const [y,m,d] = s.split("-").map(Number); return `${MON[m-1]} ${d}, ${y}`; };
+const fmtShort = s => { if (!isDate(s)) return esc(s||""); const [,m,d] = s.split("-").map(Number); return `${MON[m-1]} ${d}`; };
+const dowOf = s => DOW[new Date(dnum(s)*864e5).getUTCDay()];
+const range = (a, b) => !b || b === a ? fmt(a) : `${fmtShort(a)} – ${fmt(b)}`;
+
+/* ---------- state ---------- */
+const COLLS = ["personnel","staffing","vacations","training","assignments","reports","cancels"];
+const state = { settings:null, vacbook:null, priv:[], personnel:[], staffing:[], vacations:[], training:[], assignments:[], reports:[], cancels:[] };
+let db = null, canWrite = true, isAdmin = false, reqCo = "All", loaded = new Set(), loadNote = "", view = "dashboard";
+let staffDate = today(), vacYear = Number(today().slice(0,4)), vacSel = today(), vacFilter = "Pending", trainFilter = "Upcoming", asgFilter = "Active", rosterQ = "", rosterShift = "All";
+
+const DEFAULTS = { battalion:"TFD District 4-B", shifts:["A","B","C"], shiftAnchor: today(), stations:[], maxOff:3, homeShift:"", kelly:null, reqMonths:{ physical:12, pat:12, hazmat:12, refresher:12 } };
+const S = () => { const o = { ...DEFAULTS, ...(state.settings || {}) }; o.reqMonths = { ...DEFAULTS.reqMonths, ...(o.reqMonths||{}) }; return o; };
+const shifts = () => S().shifts.length ? S().shifts : ["A","B","C"];
+const stationNames = () => S().stations.map(s => s.name);
+const lastOf = p => (p.last || String(p.name||"").trim().split(/\s+/).pop() || "").trim();
+const names = () => state.personnel.filter(p => p.name).sort((a,b) => lastOf(a).localeCompare(lastOf(b), undefined, {sensitivity:"base"}) || a.name.localeCompare(b.name)).map(p => p.name);
+const person = n => state.personnel.find(p => p.name === n);
+function shiftOn(d){
+  const sh = shifts(), a = S().shiftAnchor;
+  if (!isDate(a) || !isDate(d)) return sh[0];
+  const k = (((dnum(d) - dnum(a)) % sh.length) + sh.length) % sh.length;
+  return sh[k];
+}
+
+/* Kelly day: on the anchor's shift, C/S groups take turns being off, one group per shift worked */
+function kellyGroup(d){
+  const k = S().kelly; if (!k || !isDate(k.anchor) || !isDate(d) || !(+k.groups)) return null;
+  const n = shifts().length, diff = dnum(d) - dnum(k.anchor);
+  if (((diff % n) + n) % n) return null;
+  const g = +k.groups, idx = diff / n;
+  return ((((+k.start||1) - 1 + idx) % g) + g) % g + 1;
+}
+/* the next day the district works (today if it's on duty) */
+function homeDate(){
+  const h = S().homeShift, t = today(); if (!h) return t;
+  for (let i = 0; i < 10; i++){ const d = addDays(t, i); if (shiftOn(d) === h) return d; }
+  return t;
+}
+const stepDays = () => S().homeShift ? shifts().length : 1;
+/* +1 adds someone to the day's roster, -1 takes them off */
+const KINDS = { "Temporary move":0, "Overtime":1, "Detail in":1, "Trade in":1, "Sick":-1, "Injury":-1, "Detail out":-1, "Trade out":-1, "Other leave":-1 };
+
+function staffFor(d){
+  const sh = shiftOn(d);
+  const off = new Map(), kg = kellyGroup(d);
+  if (kg) state.personnel.filter(p => p.shift === sh && String(p.csGroup) === String(kg)).forEach(p => off.set(p.name, { why:"City Shift Group off", src:"kelly" }));
+  const lo = leaveOrder(d), altOf = new Map();
+  lo.alt.forEach((v,i) => altOf.set(v.name, i+1));
+  lo.off.concat(lo.extra).forEach(v => off.set(v.name, { why: v.type || "Vacation", src:"vac" }));
+  const ex = state.staffing.filter(x => x.date === d);
+  ex.filter(x => KINDS[x.kind] < 0).forEach(x => off.set(x.name, { why: x.kind, src:"ex", id:x.id }));
+  const rows = [];
+  const moves = new Map(ex.filter(x => x.kind === "Temporary move" && x.station).map(x => [x.name, x]));
+  state.personnel.filter(p => p.shift === sh).forEach(p => {
+    const o = off.get(p.name), mv = moves.get(p.name);
+    rows.push({ name:p.name, rank:p.rank, station: mv ? mv.station : p.station, unit: mv ? (mv.unit || unitOf(mv.station)) : p.unit, position:p.position, moved: mv ? p.station : null, mvId: mv && mv.id, status:o ? o.why : altOf.has(p.name) ? `Alternate ${altOf.get(p.name)}` : "On duty", on:!o, alt:altOf.has(p.name) && !o, exId:o && o.id });
+  });
+  ex.filter(x => KINDS[x.kind] > 0).forEach(x => {
+    const p = person(x.name) || {};
+    rows.push({ name:x.name, rank:p.rank||"", station:x.station||p.station, unit:x.unit||p.unit, position:x.position||p.position||"", status:x.kind, on:true, inbound:true, exId:x.id });
+  });
+  const st = S().stations.map(s => { const r = rows.filter(x => x.station === s.name); return { ...s, rows:r, on:r.filter(x=>x.on).length }; });
+  const stray = rows.filter(r => !stationNames().includes(r.station));
+  if (stray.length) st.push({ name:"No company set", min:0, rows:stray, on:stray.filter(x=>x.on).length });
+  const order = { "FD-05":0, "FD-04":1, "FD-03":2, "FD-02":3, "FD-01":4 };
+  st.forEach(s => s.rows.sort((a,b) => (a.unit||"").localeCompare(b.unit||"") || (order[a.rank]??9)-(order[b.rank]??9)));
+  return { shift:sh, kg, rows, stations:st, onDuty:rows.filter(r=>r.on).length, minTotal:S().stations.reduce((a,s)=>a+(+s.min||0),0) };
+}
+
+/* Approved leave on a day, in vacation-book order: the first maxOff are off, the rest are alternates */
+function leaveOrder(d){
+  const sh = shiftOn(d), book = ((state.vacbook || {}).days || {})[d] || [];
+  const cover = v => v.start <= d && (v.end || v.start) >= d && ((v.shift || (person(v.name)||{}).shift || sh) === sh);
+  const rank = v => { const i = book.indexOf(v.name); return i >= 0 ? i : 1e4 + (+v.added || 0) / 1e13; };
+  const seen = new Set(), list = [];
+  state.vacations.filter(v => v.status === "Approved" && cover(v)).sort((a,b) => rank(a) - rank(b)).forEach(v => { if (!seen.has(v.name)){ seen.add(v.name); list.push(v); } });
+  const exempt = v => (person(v.name) || {}).slotExempt === "Yes";
+  const extra = list.filter(exempt), slotted = list.filter(v => !exempt(v));
+  const max = +S().maxOff || slotted.length;
+  return { off: slotted.slice(0, max), extra, alt: slotted.slice(max), req: state.vacations.filter(v => v.status === "Requested" && cover(v)) };
+}
+function offCount(d){ const o = leaveOrder(d); return { appr:o.off, extra:o.extra, alt:o.alt, req:o.req }; }
+
+function repState(r){
+  if (r.frequency === "One-time" && r.status === "Submitted") return ["Submitted","ok"];
+  const t = today();
+  if (!isDate(r.due)) return ["No due date",""];
+  if (r.due < t) return ["Overdue","crit"];
+  if (dnum(r.due) - dnum(t) <= 7) return ["Due soon","warn"];
+  return ["On track","ok"];
+}
+function asgState(a){
+  const t = today();
+  if (a.start && a.start > t) return ["Upcoming","info"];
+  if (a.end && a.end < t) return ["Ended",""];
+  return ["Active","ok"];
+}
+const sample = () => COLLS.some(c => state[c].some(d => d.sample)) || (state.settings && state.settings.sample);
+
+/* ---------- forms ---------- */
+const RANKS = ["FD-05","FD-04","FD-03","FD-02","FD-01"];
+const RANK_TITLE = { "FD-05":"District Chief", "FD-03":"Captain", "FD-02":"Lieutenant", "FD-01":"Firefighter" };
+const RANK_CLS = { "FD-05":"r5", "FD-03":"r3", "FD-02":"r2", "FD-01":"r1" };
+const F = {
+  personnel:{ title:"Member", fields:[
+    ["","Assignment","head"],
+    ["name","Name","text",{req:1}], ["rank","Rank","select",{opts:RANKS}],
+    ["station","Company","select",{opts:()=>["",...stationNames()]}], ["unit","Unit","text",{ph:"E03"}],
+    ["shift","Platoon","select",{opts:()=>["",...shifts()]}], ["csGroup","City Shift Group #","text"],
+    ["position","Riding position","text",{ph:"Officer, Driver, Pvt"}], ["stationNo","Station #","text"],
+    ["slotExempt","Vacation outside the daily slots","select",{opts:["","Yes","No"]}],
+    ["roic","ROIC #","text"], ["empId","Employee ID #","text"], ["hireDate","Hire date","date"],
+    ["phone","Cell phone","text"], ["email","Email","text"],
+    ["","EMS licensure","head"],
+    ["licensure","Medical licensure","select",{opts:["","EMT - Basic","EMT - Advanced","Paramedic"]}], ["licYear","License expires in","select",{opts:["","Odd","Even"]}],
+    ["refresher","EMS refresher","date"], ["protocol","Protocol test","date"],
+    ["","Physicals and recordables","head"],
+    ["physical","Last physical","date"], ["physicalSched","Physical scheduled","date"], ["physicalTime","Physical time","text",{ph:"0800"}],
+    ["mandatory","Mandatory","select",{opts:["","Yes","No"]}], ["pat","PAT date","text",{ph:"YYYY-MM-DD, or X if done"}],
+    ["pfa","PFA","text",{ph:"Date or X"}], ["ppe","PPE inspection","text",{ph:"Date or X"}], ["hazmat","HazMat Ops","text",{ph:"YYYY-MM-DD"}], ["doTraining","D/O training","text",{ph:"YYYY-MM-DD"}],
+    ["","Company training hours (T2)","head"],
+    ["q1","1st qtr","number"], ["q2","2nd qtr","number"], ["q3","3rd qtr","number"], ["q4","4th qtr","number"], ["qNeed","Required per quarter","number"],
+    ["certs","Other certifications","text",{full:1}], ["notes","Notes","textarea"] ]},
+  staffing:{ title:"Staffing change", fields:[
+    ["date","Date","date",{req:1}], ["kind","Type","select",{opts:Object.keys(KINDS)}],
+    ["name","Member","select",{opts:()=>["",...names()],req:1}],
+    ["station","Covering company (for OT, detail or trade in)","select",{opts:()=>["",...stationNames()],full:1}],
+    ["unit","Unit","text"], ["position","Riding position","text"], ["note","Note","textarea"] ]},
+  vacations:{ title:"Leave request", fields:[
+    ["name","Member","select",{opts:()=>["",...names()],req:1}], ["type","Leave type","select",{opts:["Vacation","Day exchange","City Shift Group flex","Holiday","Comp time","Personal","FMLA","Military","Bereavement"]}],
+    ["start","First day","date",{req:1}], ["end","Last day","date"],
+    ["status","Status","select",{opts:()=>isAdmin?["Requested","Approved","Denied"]:[]}], ["note","Note","textarea"] ]},
+  training:{ title:"Training session", fields:[
+    ["title","Title","text",{req:1,full:1}], ["date","Date","date",{req:1}], ["time","Start time","time"],
+    ["category","Category","select",{opts:["Fire suppression","EMS","Hazmat","Technical rescue","Driver/Operator","Officer development","Safety","Other"]}],
+    ["hours","Hours","number"], ["location","Location","text"], ["instructor","Instructor","text"],
+    ["audience","Who attends","text",{ph:"B shift, all companies"}], ["status","Status","select",{opts:["Scheduled","Completed","Cancelled"]}], ["notes","Notes","textarea"] ]},
+  assignments:{ title:"Special assignment", fields:[
+    ["name","Member","select",{opts:()=>["",...names()],req:1}], ["type","Type","select",{opts:["Detail","Acting rank","Light duty","Committee","Special operations","Instructor","Other"]}],
+    ["assignment","Assignment","text",{req:1,full:1}], ["start","Start","date",{req:1}], ["end","End","date"], ["notes","Notes","textarea"] ]},
+  reports:{ title:"Reporting requirement", fields:[
+    ["title","Report","text",{req:1,full:1}], ["frequency","Frequency","select",{opts:["Daily","Weekly","Monthly","Quarterly","Annual","One-time"]}],
+    ["due","Next due","date",{req:1}], ["owner","Responsible","text"], ["submitTo","Submit to","text"],
+    ["status","Status","select",{opts:["Open","Submitted"]}], ["notes","Notes","textarea"] ]},
+};
+
+const PRIV_FIELDS = [["dob","Date of birth","date"],["address","Home address","text",{full:1}],["city","City","text"],["state","State","text"],["zip","Zip","text"],["spouse","Spouse","text"],["ecName","Emergency contact","text"],["ecPhone","Emergency contact phone","text"],["ecRel","Relationship","text"],["goal","Next career goal","textarea"],["plan","5-year plan","textarea"]];
+let modalCtx = null;
+function closeModal(){ $("#modalRoot").innerHTML = ""; modalCtx = null; }
+function showModal(html, wide){
+  $("#modalRoot").innerHTML = `<div class="scrim" data-a="scrim"><div class="modal${wide?" wide":""}" role="dialog" aria-modal="true">${html}</div></div>`;
+  const f = $("#modalRoot input, #modalRoot select, #modalRoot textarea"); if (f) f.focus();
+}
+function openForm(coll, doc, defaults){
+  const spec = F[coll], d = doc || defaults || {};
+  modalCtx = { coll, id: doc && doc.id, confirmDel:false, extraKeys: Object.keys((doc && doc.extra) || {}) };
+  const priv = false && coll === "personnel" && isAdmin ? ((doc && state.priv.find(x => x.id === doc.id)) || {}) : null;
+  modalCtx.priv = !!priv;
+  const renderF = (pre, src) => ([k,label,type,o={}]) => {
+    if (type === "head") return `<div class="fhead">${esc(label)}</div>`;
+    const v = src[k] ?? "", id = pre+k, cls = (o.full || type === "textarea") ? ' class="full"' : "";
+    let input;
+    if (type === "select"){
+      let opts = typeof o.opts === "function" ? o.opts() : o.opts;
+      if (v && !opts.includes(v)) opts = [...opts, v];
+      input = `<select id="${id}">${opts.map(x=>`<option value="${esc(x)}"${x===v?" selected":""}>${esc(x||"—")}</option>`).join("")}</select>`;
+    } else if (type === "textarea") input = `<textarea id="${id}">${esc(v)}</textarea>`;
+    else input = `<input id="${id}" type="${type}" value="${esc(v)}"${o.ph?` placeholder="${esc(o.ph)}"`:""}${type==="number"?' step="0.5" min="0"':""}>`;
+    return `<label${cls} for="${id}">${esc(label)}${o.req?" *":""}${input}</label>`;
+  };
+  let fields = spec.fields.map(renderF("f_", d)).join("");
+  if (priv) fields += `<div class="fhead lock">Personal and emergency contact · visible to you and Editors only</div>` + PRIV_FIELDS.map(renderF("p_", priv)).join("");
+  const extras = modalCtx.extraKeys.map((k,i) => `<label for="x_${i}">${esc(k)}<input id="x_${i}" value="${esc(d.extra[k])}"></label>`).join("");
+  showModal(`<h2>${doc?"Edit":"Add"} ${esc(spec.title.toLowerCase())}</h2>
+    <form class="form" id="frm" novalidate>${fields}${extras ? `<div class="full hint">Other columns from your workbook</div>${extras}` : ""}</form>
+    <div class="err" id="ferr"></div>
+    <div class="mf"><div>${doc && canWrite ? `<button class="btn danger" data-a="del">Delete</button>` : ""}</div>
+    <div class="tools"><button class="btn" data-a="close">Cancel</button>${canWrite?`<button class="btn pri" data-a="save">Save</button>`:""}</div></div>`);
+}
+async function saveForm(){
+  const { coll, id } = modalCtx, spec = F[coll];
+  const prev = id ? state[coll].find(x => x.id === id) : null;
+  const data = prev ? { ...prev } : {}; delete data.id;
+  for (const [k,label,type,o={}] of spec.fields){
+    if (type === "head") continue;
+    let v = $("#f_"+k).value.trim();
+    if (type === "number") v = v === "" ? "" : Number(v);
+    if (o.req && v === "") { $("#ferr").textContent = `${label} is required.`; return; }
+    data[k] = v;
+  }
+  if (modalCtx.extraKeys.length){ data.extra = {}; modalCtx.extraKeys.forEach((k,i) => data.extra[k] = $("#x_"+i).value); }
+  if (data.end && data.start && data.end < data.start){ $("#ferr").textContent = "The end date is before the start date."; return; }
+  if (coll === "vacations"){ data.shift = (person(data.name)||{}).shift || S().homeShift || ""; if (!data.added) data.added = Date.now(); }
+  try {
+    if (!db) throw new Error("offline");
+    const ref = id ? db.collection(coll).doc(id) : db.collection(coll).doc();
+    await ref.set(data);
+    if (modalCtx && modalCtx.priv){
+      const pv = { name: data.name }; PRIV_FIELDS.forEach(([k]) => { const v = $("#p_"+k).value.trim(); if (v) pv[k] = v; });
+      await db.collection("private").doc(ref.id).set(pv);
+    }
+    closeModal(); toast("Saved");
+  } catch(e){ $("#ferr").textContent = writeErr(e); }
+}
+async function delDoc(){
+  if (!modalCtx.confirmDel){ modalCtx.confirmDel = true; const b = document.querySelector('[data-a="del"]'); b.textContent = "Tap again to delete"; return; }
+  try { await db.collection(modalCtx.coll).doc(modalCtx.id).delete(); if (modalCtx.priv) await db.collection("private").doc(modalCtx.id).delete(); closeModal(); toast("Deleted"); }
+  catch(e){ $("#ferr").textContent = writeErr(e); }
+}
+function writeErr(e){
+  if (!db) return "You're not signed in, so changes can't be saved. Reload the page and sign in.";
+  if (e && e.code === "invalid_argument") { return "You have view-only access, so changes can't be saved. Ask the district chief for Editor access."; }
+  if (e && e.code === "quota_exceeded") return "The portal's storage is full. Delete old records, then try again.";
+  return "Couldn't save just now. Check your connection and try again.";
+}
+let toastT;
+function toast(msg){ let t = $("#toast"); if (!t){ t = document.createElement("div"); t.id="toast"; t.className="toast"; t.setAttribute("role","status"); document.body.appendChild(t); } t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(()=>t.hidden=true, 2200); }
+
+/* ---------- views ---------- */
+const pill = (t,c) => `<span class="pill ${c||""}">${esc(t)}</span>`;
+const empty = t => `<div class="empty">${esc(t)}</div>`;
+const editBtn = (c,id,label="Edit") => `<button class="btn sm" data-a="edit" data-c="${c}" data-id="${esc(id)}">${canWrite?label:"View"}</button>`;
+
+function banners(){
+  let h = "";
+  if (loadNote) h += `<div class="banner warn">${esc(loadNote)}</div>`;
+  if (sample() && canWrite) h += `<div class="banner info"><span>You're looking at sample data so you can see how the portal works. Remove it in Setup when you're ready to load your own.</span><a href="#setup" class="btn sm">Go to Setup</a></div>`;
+  if (!S().stations.length && loaded.has("settings")) h += `<div class="banner warn"><span>No companies are set up yet. Add your companies and minimum staffing in Setup.</span><a href="#setup" class="btn sm">Go to Setup</a></div>`;
+  return h;
+}
+
+const unitOf = co => (state.personnel.find(p => p.station === co) || {}).unit || "";
+/* statusByName: show only the Staffed / At minimum / Short tag, right beside the company name (Daily Staffing tab) */
+function stationMeters(sf, withMembers, dragDate, statusByName){
+  if (!sf.stations.length) return empty("No companies set up.");
+  return sf.stations.map(s => {
+    const min = +s.min || 0, max = Math.max(min + 2, s.on, 1), short = s.on < min;
+    const tag = short?pill(`Short ${min-s.on}`,"crit"):s.on===min?pill("At minimum","warn"):pill("Staffed","ok");
+    const head = statusByName ? `<div class="row lead"><b>${esc(s.name)}</b>${tag}</div>` : `<div class="row"><b>${esc(s.name)}</b><span>${s.on} on duty · min ${min} ${tag}</span></div>`;
+    return `<div class="st"${dragDate ? ` data-drop="${esc(s.name)}"` : ""}>${head}
+      <div class="meter" aria-hidden="true"><div class="f${short?" crit":""}" style="width:${Math.min(100,s.on/max*100)}%"></div>${min?`<div class="min" style="left:${min/max*100}%"></div>`:""}</div>${withMembers ? `<div class="crew">${s.rows.filter(r=>r.on).map(r=>`<span class="mem${r.inbound?" in":r.alt?" alt":""}${r.moved?" mv":""}${r.rank==="FD-03"?" r3":r.rank==="FD-02"?" r2":r.rank==="FD-01"?" r1":r.rank==="FD-05"?" r5":""}" title="${esc(r.name)}${r.rank?" · "+esc(r.rank):""}"${dragDate && !r.inbound ? ` data-drag="${esc(r.name)}" data-from="${esc(r.station)}" tabindex="0" role="button" aria-label="Move ${esc(r.name)}"` : ""}>${(()=>{ const x = [r.moved?"from "+esc(r.moved):"", (r.inbound||r.alt)?esc(r.status):""].filter(Boolean).join(" · "); return `<b>${esc(r.name)}</b>${x?` <small>${x}</small>`:""}`; })()}</span>`).join("") || `<span class="hint">Nobody on duty</span>`}</div>` : ""}</div>`;
+  }).join("");
+}
+
+function vDashboard(){
+  const t = homeDate(), sf = staffFor(t), off = sf.rows.filter(r => !r.on), inb = sf.rows.filter(r => r.inbound || r.alt);
+  const shortSt = sf.stations.filter(s => s.on < (+s.min||0));
+  const tr = state.training.filter(x => x.date === t && x.status !== "Cancelled").sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+  const act = state.assignments.filter(a => asgState(a)[0] === "Active");
+  const reps = state.reports.map(r => ({ r, s:repState(r) })).filter(x => x.s[0] === "Overdue" || x.s[0] === "Due soon").sort((a,b)=>(a.r.due||"").localeCompare(b.r.due||""));
+  const overdue = reps.filter(x => x.s[0] === "Overdue").length;
+  const upV = state.vacations.filter(v => v.status === "Approved" && v.start > t && v.start <= addDays(t,14)).sort((a,b)=>a.start.localeCompare(b.start));
+  const pend = state.vacations.filter(v => v.status === "Requested").length;
+  return `${banners()}
+  <div class="head"><h2>${t === today() ? "" : "Next shift · "}${dowOf(t)}, ${fmt(t)} · ${esc(sf.shift)} Platoon${sf.kg ? ` · City Shift Group ${sf.kg} off` : ""}</h2>
+    <div class="tools w"><button class="btn" data-a="add" data-c="staffing">Log staffing change</button><button class="btn" data-a="add" data-c="vacations">Add leave</button><button class="btn pri" data-a="add" data-c="training">Add training</button></div></div>
+  <div class="tiles">
+    <div class="tile ${shortSt.length?"crit":"ok"}"><div class="k">On duty</div><div class="v">${sf.onDuty}<span style="font-size:20px;color:var(--muted)"> / ${sf.minTotal}</span></div><div class="s">${shortSt.length ? `${shortSt.length} compan${shortSt.length>1?"ies":"y"} below minimum` : "All companies at or above minimum"}</div></div>
+    <div class="tile info"><div class="k">Off ${t === today() ? "today" : "this shift"}</div><div class="v">${off.length}</div><div class="s">${sf.rows.filter(r=>r.alt).length} vacation alternates working · ${sf.rows.filter(r=>r.inbound).length} coverage in</div></div>
+    <div class="tile info"><div class="k">Training ${t === today() ? "today" : "this shift"}</div><div class="v">${tr.length}</div><div class="s">${tr.reduce((a,x)=>a+(+x.hours||0),0)} scheduled hours</div></div>
+    ${window.wxTile ? wxTile(t) : `<div class="tile ${overdue?"crit":reps.length?"warn":"ok"}"><div class="k">Reports overdue</div><div class="v">${overdue}</div><div class="s">${reps.length-overdue} due within 7 days</div></div>`}
+  </div>
+  <div class="grid g2">
+    <section class="panel"><div class="ph"><h3>Staffing by company</h3><a href="#staffing">Full roster</a></div><div class="hint">Yellow = FD-05, red = FD-03, green = FD-02, black = FD-01. Blue outline = coverage in; gold outline = vacation alternate.</div>${stationMeters(sf, true)}</section>
+    <section class="panel"><div class="ph"><h3>Off and coverage</h3><a href="#staffing">Details</a></div>
+      ${offGroups(t, sf)}</section>
+  </div>
+  <div class="grid g3">
+    <section class="panel"><div class="ph"><h3>Training this shift</h3><a href="#training">All training</a></div>
+      <div class="list">${tr.length ? tr.map(x=>`<div class="li"><div><div class="t">${esc(x.title)}</div><div class="d">${esc([x.time,x.location,x.audience].filter(Boolean).join(" · "))}</div></div>${pill(x.status, x.status==="Completed"?"ok":"info")}</div>`).join("") : empty("No training scheduled this shift.")}</div></section>
+    <section class="panel"><div class="ph"><h3>Reports due</h3><a href="#reports">All reports</a></div>
+      <div class="list">${reps.length ? reps.slice(0,6).map(({r,s})=>`<div class="li"><div><div class="t">${esc(r.title)}</div><div class="d">Due ${fmtShort(r.due)}${r.owner?` · ${esc(r.owner)}`:""}</div></div>${pill(s[0],s[1])}</div>`).join("") : empty("Nothing due in the next 7 days.")}</div></section>
+    <section class="panel"><div class="ph"><h3>Special assignments</h3><a href="#assignments">All</a></div>
+      <div class="list">${act.length ? act.map(a=>`<div class="li"><div><div class="t">${esc(a.name)}</div><div class="d">${esc(a.assignment)}${a.end?` · until ${fmtShort(a.end)}`:""}</div></div>${pill(a.type||"Active","info")}</div>`).join("") : empty("No active special assignments.")}</div></section>
+  </div>
+  <section class="panel"><div class="ph"><h3>Member requirements</h3><a href="#requirements">All requirements</a></div>${dashReq()}</section>
+  <section class="panel"><div class="ph"><h3>Leave starting in the next 14 days</h3><a href="#vacation">Vacation schedule${pend?` · ${pend} pending`:""}</a></div>
+    <div class="list">${upV.length ? upV.map(v=>`<div class="li"><div><div class="t">${esc(v.name)} <span class="sh">${esc(v.shift||"")}</span></div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div></div>${pill("Approved","ok")}</div>`).join("") : empty("No approved leave starts in the next two weeks.")}</div></section>`;
+}
+
+function dashReq(){
+  const t = today(), m = S().reqMonths, all = state.personnel;
+  const soonPhys = all.filter(p => isDate(p.physicalSched) && p.physicalSched >= t && p.physicalSched <= addDays(t,14)).sort((a,b)=>a.physicalSched.localeCompare(b.physicalSched));
+  const over = all.map(p => ({ p, items:[ physStat(p).k==="over" && !physStat(p).sch ? "Physical" : "", reqStat(p.refresher,m.refresher).k==="over" ? "EMS refresher" : "", p.mandatory!=="No" && reqStat(p.pat,m.pat).k==="over" ? "PAT" : "", reqStat(p.hazmat,m.hazmat).k==="over" ? "HazMat Ops" : "" ].filter(Boolean) })).filter(x => x.items.length);
+  if (!all.length) return empty("Add members to track their requirements.");
+  return `<div class="list">${soonPhys.map(p=>`<div class="li"><div><div class="t">${esc(p.name)}</div><div class="d">${esc(p.unit||"")} · physical</div></div>${pill(`${fmtShort(p.physicalSched)}${p.physicalTime?" · "+p.physicalTime:""}`,"info")}</div>`).join("")}
+    ${over.slice(0,8).map(x=>`<div class="li"><div><div class="t">${esc(x.p.name)}</div><div class="d">${esc(x.p.unit||"")}</div></div>${pill(x.items.join(", ")+" overdue","crit")}</div>`).join("")}
+    ${over.length > 8 ? `<div class="li"><a href="#requirements">${over.length-8} more members with overdue items</a></div>` : ""}
+    ${!soonPhys.length && !over.length ? empty("Everyone is current, and no physicals are scheduled in the next 14 days.") : ""}</div>`;
+}
+function offGroups(d, sf){
+  const oc = offCount(d), byName = n => sf.rows.find(r => r.name === n) || person(n) || {};
+  const sub = n => { const r = byName(n); return esc([r.rank, r.unit || r.station].filter(Boolean).join(" · ")); };
+  const item = (n, tag, c) => `<div class="li"><div><div class="t">${esc(n)}</div><div class="d">${sub(n)}</div></div>${pill(tag, c)}</div>`;
+  const grp = (title, count, body) => `<div class="fhead" style="margin-top:4px;display:flex;justify-content:space-between"><span>${title}</span><span class="hint">${count}</span></div><div class="list">${body}</div>`;
+  const csOff = sf.rows.filter(r => r.status === "City Shift Group off");
+  const other = sf.rows.filter(r => (!r.on && r.status !== "City Shift Group off" && !oc.appr.concat(oc.extra).some(v => v.name === r.name)) || r.inbound || r.moved);
+  const vac = oc.appr.filter(v => byName(v.name).name || true);
+  let h = grp(`Vacation`, `${vac.length} of ${+S().maxOff || "–"}`, vac.length ? vac.map((v,i) => item(v.name, `Slot ${i+1}`, "ok")).join("") : empty("Nobody on vacation."));
+  if (oc.extra.length) h += grp(`Also off · outside slots`, oc.extra.length, oc.extra.map(v => item(v.name, "Extra", "info")).join(""));
+  h += grp(`Alternates · working`, oc.alt.length, oc.alt.length ? oc.alt.map((v,i) => item(v.name, `Alternate ${i+1}`, "warn")).join("") : empty("No alternates."));
+  h += grp(`City Shift Group ${sf.kg ?? "–"} off`, csOff.length, csOff.length ? csOff.map(r => item(r.name, "City Shift Group", "")).join("") : empty(sf.kg ? "No members in this group." : "No City Shift Group off this day."));
+  if (other.length) h += grp(`Other changes`, other.length, other.map(r => item(r.name, r.moved && r.on ? `Moved ${r.moved} → ${r.station}` : r.status, r.on ? "info" : "warn")).join(""));
+  return h;
+}
+function vStaffing(){
+  const sf = staffFor(staffDate), d = staffDate;
+  return `${banners()}
+  <div class="head"><h2>Daily staffing</h2>
+    <div class="tools"><button class="btn" data-a="day" data-n="-1" aria-label="Previous day">‹ Prev</button>
+      <input type="date" id="staffDate" value="${d}" style="width:auto">
+      <button class="btn" data-a="day" data-n="1" aria-label="Next day">Next ›</button><button class="btn" data-a="day" data-n="0">${S().homeShift ? "Next shift" : "Today"}</button>
+      <button class="btn pri w" data-a="add" data-c="staffing">Log change</button></div></div>
+  <div class="hint">${dowOf(d)}, ${fmt(d)} · <b>${esc(sf.shift)} Platoon</b> on duty${sf.kg ? ` · City Shift Group ${sf.kg} off` : ""} · ${sf.onDuty} of ${sf.minTotal} minimum. Staffing starts from each member's shift and company on the Roster tab, then removes the City Shift Group that is off and approved leave, and adds the changes logged here.</div>
+  <section class="panel"><h3>Company summary</h3><div class="hint"><b class="w">Drag a member to another company to move them for ${fmtShort(d)} only (on a phone, press and hold, then drag), or tap a member to pick a company. Dashed outline = temporarily moved.</b> On-duty members are listed under each company. Red = FD-03, green = FD-02, black = FD-01, yellow = FD-05. Blue outline = coverage in (OT, detail, trade); gold outline = vacation alternate.</div>${stationMeters(sf, true, canWrite ? d : null, true)}</section>
+  <div class="grid g2">${sf.stations.map(s=>`<section class="panel"><div class="ph"><h3>${esc(s.name)}</h3>${pill(`${s.on} / ${s.min||0}`, s.on < (+s.min||0) ? "crit" : "ok")}</div>
+    <div class="tw"><table><thead><tr><th>Member</th><th>Unit</th><th>Position</th><th>Status</th><th></th></tr></thead><tbody>
+    ${s.rows.length ? s.rows.map(r=>`<tr class="${r.on?"":"out"}"><td><b>${esc(r.name)}</b><div class="hint">${esc(r.rank||"")}</div></td><td>${esc(r.unit||"")}</td><td>${esc(r.position||"")}${RANK_TITLE[r.rank] ? `<div class="hint rt ${RANK_CLS[r.rank]}">${RANK_TITLE[r.rank]}</div>` : ""}</td><td>${pill(r.status, r.on ? (r.inbound?"info":r.alt?"":"ok") : "warn")}</td><td>${r.exId?editBtn("staffing",r.exId):""}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">Nobody assigned to this company on ${esc(sf.shift)} platoon.</td></tr>`}
+    </tbody></table></div></section>`).join("")}</div>`;
+}
+
+function vVacation(){
+  const t = today(), y = vacYear, maxOff = +S().maxOff || 0;
+  let months = "";
+  for (let m = 0; m < 12; m++){
+    const first = new Date(Date.UTC(y,m,1)).getUTCDay(), days = new Date(Date.UTC(y,m+1,0)).getUTCDate();
+    let cells = DOW.map(x=>`<div class="dow">${x[0]}</div>`).join("") + "<div></div>".repeat(first);
+    for (let d = 1; d <= days; d++){
+      const ds = `${y}-${pad(m+1)}-${pad(d)}`, oc = offCount(ds), n = oc.appr.length;
+      const cls = ["day", n>=5?"l3":n>=3?"l2":n>=1?"l1":"", maxOff && n>=maxOff?"over":"", oc.req.length||oc.alt.length?"req":"", ds===t?"today":"", ds===vacSel?"sel":"", S().homeShift && shiftOn(ds) !== S().homeShift ? "off" : ""].filter(Boolean).join(" ");
+      const kg = kellyGroup(ds);
+      if (S().homeShift && shiftOn(ds) !== S().homeShift){ cells += `<div class="day blank" aria-hidden="true"></div>`; continue; }
+      cells += `<button class="${cls}" data-a="vday" data-d="${ds}" aria-label="${fmt(ds)}, ${shiftOn(ds)} platoon${kg?`, City Shift Group ${kg} off`:""}, ${n} off${oc.alt.length?`, ${oc.alt.length} alternates`:""}${oc.req.length?`, ${oc.req.length} requested`:""}">${d}<small>${kg ? "G"+kg : (S().homeShift ? "" : esc(shiftOn(ds)))}</small></button>`;
+    }
+    months += `<div class="mon"><h3>${MONTHS[m]}</h3><div class="cal">${cells}</div></div>`;
+  }
+  const oc = offCount(vacSel);
+  const list = state.vacations.filter(v => vacFilter === "All" ? true : vacFilter === "Pending" ? v.status === "Requested" : vacFilter === "Approved" ? v.status === "Approved" : v.status === "Denied")
+    .filter(v => (v.start||"").startsWith(String(y)) || (v.end||"").startsWith(String(y))).sort((a,b)=>(a.start||"").localeCompare(b.start||""));
+  return `${banners()}
+  <div class="head"><h2>Vacation schedule ${y}</h2>
+    <div class="tools"><button class="btn" data-a="year" data-n="-1">‹ ${y-1}</button><button class="btn" data-a="year" data-n="1">${y+1} ›</button><button class="btn pri w" data-a="add" data-c="vacations">Add leave</button></div></div>
+  <div class="grid g2" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+  <section class="panel" style="grid-column:1/-1">
+    <div class="legend"><span>On vacation:</span><span><i style="background:var(--soft)"></i>0</span><span><i style="background:color-mix(in srgb,var(--info) 22%,var(--surface))"></i>1–2</span><span><i style="background:color-mix(in srgb,var(--info) 45%,var(--surface))"></i>3–4</span><span><i style="background:color-mix(in srgb,var(--info) 70%,var(--surface))"></i>5–6</span><span><i style="border:2px solid var(--crit)"></i>All ${maxOff} slots full</span><span><i style="background:var(--brass);border-radius:50%;width:7px;height:7px"></i>Alternates or pending requests</span><span>${S().kelly ? "G# = City Shift Group off" : "Letter = platoon on duty"}${S().homeShift ? ` · only ${esc(S().homeShift)} platoon days are shown` : ""}</span></div>
+    <div class="year">${months}</div></section>
+  <section class="panel"><div class="ph"><h3>${dowOf(vacSel)}, ${fmt(vacSel)} · ${esc(shiftOn(vacSel))} Platoon</h3>${pill(`${oc.appr.length} of ${maxOff||"–"} slots${oc.alt.length?` · ${oc.alt.length} alternate${oc.alt.length>1?"s":""}`:""}`, maxOff && oc.appr.length>=maxOff ? "crit" : "")}</div>
+    ${kellyGroup(vacSel) ? `<div class="hint"><b>City Shift Group ${kellyGroup(vacSel)} off:</b> ${esc(state.personnel.filter(p => String(p.csGroup) === String(kellyGroup(vacSel))).map(p => p.name).join(", ") || "no members in this group")}</div>` : ""}
+    <div class="list">${oc.appr.length + oc.extra.length + oc.alt.length + oc.req.length ? [
+      ...oc.appr.map((v,i) => [v, pill(`Slot ${i+1} · Off`,"ok")]),
+      ...oc.extra.map(v => [v, pill("Off · outside slots","info")]),
+      ...oc.alt.map((v,i) => [v, pill(`Alternate ${i+1} · Working`,"warn")]),
+      ...oc.req.map(v => [v, pill("Requested","info")])
+    ].map(([v,tag])=>`<div class="li"><div><div class="t">${esc(v.name)}</div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div></div><div class="tools">${tag}${cancelBtn(v,vacSel)}${editBtn("vacations",v.id)}</div></div>`).join("") : empty("Nobody is on vacation this day.")}</div>
+    <div class="hint">Order follows the vacation book, top to bottom. New leave added here goes to the bottom of each day's list. If someone in slots 1–${maxOff||6} comes off, the alternates move up.</div>
+    <div class="w"><button class="btn sm" data-a="add" data-c="vacations" data-start="${vacSel}">Add leave starting this day</button></div></section>
+  ${cancelPanel()}
+  <section class="panel"><div class="ph"><h3>Leave requests</h3><div class="seg">${["Pending","Approved","Denied","All"].map(f=>`<button class="${f===vacFilter?"on":""}" data-a="vf" data-f="${f}">${f}</button>`).join("")}</div></div>
+    <div class="list">${list.length ? list.map(v=>`<div class="li"><div><div class="t">${esc(v.name)} <span class="sh">${esc(v.shift||"")}</span></div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}${v.note?` · ${esc(v.note)}`:""}</div></div>
+      <div class="tools">${v.status==="Requested" && isAdmin ? `<button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Approved">Approve</button><button class="btn sm" data-a="vset" data-id="${esc(v.id)}" data-s="Denied">Deny</button>` : pill(v.status, v.status==="Approved"?"ok":v.status==="Denied"?"crit":"warn")}${editBtn("vacations",v.id)}</div></div>`).join("") : empty(`No ${vacFilter==="All"?"":vacFilter.toLowerCase()+" "}leave in ${y}.`)}</div></section>
+  </div>`;
+}
+
+/* ---------- cancel-leave requests ---------- */
+const myName = () => { try { return (state.personnel.find(p => (p.email||"").toLowerCase() === me.email) || {}).name || ""; } catch(e){ return ""; } };
+const pendingCancel = (vid, d) => state.cancels.find(c => c.vacId === vid && c.status === "Requested" && (c.scope === "all" || c.date === d));
+function cancelBtn(v, d){
+  if (!v || v.status !== "Approved") return "";
+  if (pendingCancel(v.id, d)) return pill("Cancel requested","warn");
+  if (v.name !== myName() && !canWrite) return "";
+  return `<button class="btn sm" data-a="creq" data-id="${esc(v.id)}" data-d="${d}">Request cancel</button>`;
+}
+function cancelPanel(){
+  const recent = c => c.status === "Requested" || (isDate(c.decided) && dnum(today()) - dnum(c.decided) <= 14);
+  const list = state.cancels.filter(c => canWrite ? recent(c) : c.by === me.email)
+    .sort((a,b) => (a.status==="Requested"?0:1) - (b.status==="Requested"?0:1) || (b.added||0) - (a.added||0));
+  if (!list.length && !canWrite) return "";
+  const n = state.cancels.filter(c => c.status === "Requested").length;
+  const when = c => c.scope === "all" ? "all of " + range(c.start, c.end) : `${dowOf(c.date)}, ${fmt(c.date)}`;
+  const who = c => c.byName === c.name ? "" : ` · asked by ${esc(c.byName || c.by)}`;
+  return `<section class="panel"><div class="ph"><h3>Cancel requests</h3>${n ? pill(`${n} pending`,"warn") : ""}</div>
+    <div class="list">${list.length ? list.map(c => `<div class="li"><div><div class="t">${esc(c.name)}</div><div class="d">${esc(c.type||"Vacation")} · ${when(c)}${who(c)}${c.note ? ` · ${esc(c.note)}` : ""}</div></div>
+      <div class="tools">${c.status === "Requested" && isAdmin ? `<button class="btn sm pri" data-a="cdec" data-id="${esc(c.id)}" data-s="Approved">Approve</button><button class="btn sm" data-a="cdec" data-id="${esc(c.id)}" data-s="Denied">Deny</button>` : pill(c.status === "Requested" ? "Pending" : c.status === "Approved" ? "Cancelled" : "Denied", c.status === "Approved" ? "ok" : c.status === "Denied" ? "crit" : "warn")}</div></div>`).join("") : empty("No cancel requests.")}</div></section>`;
+}
+function openCancel(id, d){
+  const v = state.vacations.find(x => x.id === id); if (!v) return;
+  const multi = v.end && v.end !== v.start;
+  modalCtx = { cancel:{ v, d, multi } };
+  showModal(`<h2>Request to cancel leave</h2>
+    <div class="hint"><b>${esc(v.name)}</b> · ${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div>
+    ${multi ? `<label for="c_scope">What to cancel<select id="c_scope"><option value="day">Just ${dowOf(d)}, ${fmt(d)}</option><option value="all">All of ${range(v.start,v.end)}</option></select></label>` : `<div class="hint">Day: ${dowOf(d)}, ${fmt(d)}</div>`}
+    <label for="c_note">Note (optional)<textarea id="c_note"></textarea></label>
+    <div class="hint">An Admin will approve or deny this. The leave stays on the book until it's approved.</div>
+    <div class="err" id="cerr"></div>
+    <div class="mf"><span></span><div class="tools"><button class="btn" data-a="close">Close</button><button class="btn pri" data-a="csend">Send request</button></div></div>`);
+}
+async function sendCancel(btn){
+  const { v, d, multi } = modalCtx.cancel;
+  const data = { vacId:v.id, name:v.name, date:d, scope: multi ? $("#c_scope").value : "all", start:v.start, end:v.end || v.start, type:v.type || "Vacation", note:$("#c_note").value.trim(), by:me.email, byName:myName(), status:"Requested", added:Date.now() };
+  btn.disabled = true;
+  try { if (!db) throw 0; await db.collection("cancels").doc().set(data); closeModal(); toast("Cancel request sent"); }
+  catch(e){ btn.disabled = false; $("#cerr").textContent = e && e.code === "invalid_argument" ? "The request couldn't be sent. Make sure you're signed in with the email on your roster entry." : writeErr(e); }
+}
+async function decideCancel(id, s, btn){
+  const c = state.cancels.find(x => x.id === id); if (!c) return;
+  btn.disabled = true;
+  try {
+    if (!db) throw 0;
+    if (s === "Approved"){
+      const covers = x => x.start <= c.date && (x.end || x.start) >= c.date;
+      let v = state.vacations.find(x => x.id === c.vacId);
+      if (c.scope !== "all" && v && !covers(v)) v = state.vacations.find(x => x.name === c.name && x.status === "Approved" && covers(x));
+      if (v && v.status === "Approved"){
+        const st = v.start, en = v.end || v.start, d = c.date, ref = db.collection("vacations").doc(v.id);
+        if (c.scope === "all" || st === en) await ref.update({ status:"Cancelled" });
+        else if (d === st) await ref.update({ start:addDays(d, 1) });
+        else if (d === en) await ref.update({ end:addDays(d, -1) });
+        else if (d > st && d < en){ const { id:_, ...rest } = v; await ref.update({ end:addDays(d, -1) }); await db.collection("vacations").doc().set({ ...rest, start:addDays(d, 1), end:en }); }
+      }
+    }
+    await db.collection("cancels").doc(id).update({ status:s, decidedBy:me.email, decided:today() });
+    toast(s === "Approved" ? "Leave cancelled" : "Cancel request denied");
+  } catch(e){ btn.disabled = false; toast(writeErr(e)); }
+}
+
+function openDay(d){
+  const oc = offCount(d), sf = staffFor(d), kg = kellyGroup(d), maxOff = +S().maxOff || 0;
+  const cs = kg ? state.personnel.filter(p => String(p.csGroup) === String(kg)) : [];
+  const tr = state.training.filter(x => x.date === d && x.status !== "Cancelled");
+  const ex = state.staffing.filter(x => x.date === d);
+  const row = (name, sub, tag, c, id, x="") => `<div class="li"><div><div class="t">${esc(name)}</div>${sub?`<div class="d">${sub}</div>`:""}</div><div class="tools">${tag}${x}${c&&id?editBtn(c,id):""}</div></div>`;
+  modalCtx = { day:d };
+  showModal(`<div class="mf" style="align-items:center"><button class="btn sm" data-a="dstep" data-n="-1" aria-label="Previous day">‹ Prev</button><span class="hint">${esc(shiftOn(d))} platoon day</span><button class="btn sm" data-a="dstep" data-n="1" aria-label="Next day">Next ›</button></div>
+    <h2>${dowOf(d)}, ${fmt(d)}</h2>
+    <div class="tiles">
+      <div class="tile ${maxOff && oc.appr.length>=maxOff?"crit":"info"}"><div class="k">Vacation</div><div class="v">${oc.appr.length}<span style="font-size:18px;color:var(--muted)"> / ${maxOff||"–"}</span></div><div class="s">${oc.alt.length} alternate${oc.alt.length===1?"":"s"}</div></div>
+      <div class="tile ${sf.stations.some(x=>x.on<(+x.min||0))?"crit":"ok"}"><div class="k">On duty</div><div class="v">${sf.onDuty}<span style="font-size:18px;color:var(--muted)"> / ${sf.minTotal}</span></div><div class="s">${kg?`City Shift Group ${kg} off`:"&nbsp;"}</div></div>
+    </div>
+    <section><h3>Vacation slots</h3><div class="list">${oc.appr.length ? oc.appr.map((v,i)=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill(`Slot ${i+1}`,"ok"), "vacations", v.id, cancelBtn(v,d))).join("") : empty("Nobody on vacation.")}</div></section>
+    ${oc.extra.length ? `<section><h3>Also off · outside the ${maxOff} slots</h3><div class="list">${oc.extra.map(v=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill("Extra","info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
+    ${oc.alt.length ? `<section><h3>Alternates (working)</h3><div class="list">${oc.alt.map((v,i)=>row(v.name, esc(range(v.start,v.end)), pill(`Alternate ${i+1}`,"warn"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
+    ${oc.req.length ? `<section><h3>Pending requests</h3><div class="list">${oc.req.map(v=>row(v.name, esc(range(v.start,v.end)), pill("Requested","info"), "vacations", v.id)).join("")}</div></section>` : ""}
+    ${kg ? `<section><h3>City Shift Group ${kg} off</h3><div class="list">${cs.length ? cs.map(p=>row(p.name, esc([p.rank,p.unit].filter(Boolean).join(" · ")), pill("City Shift Group","")) ).join("") : empty("No members in this City Shift Group.")}</div></section>` : ""}
+    ${ex.length ? `<section><h3>Staffing changes</h3><div class="list">${ex.map(x=>row(x.name, esc([x.station,x.note].filter(Boolean).join(" · ")), pill(x.kind, KINDS[x.kind]>0?"info":"warn"), "staffing", x.id)).join("")}</div></section>` : ""}
+    <section><h3>Staffing by company</h3>${stationMeters(sf)}</section>
+    ${tr.length ? `<section><h3>Training</h3><div class="list">${tr.map(x=>row(x.title, esc([x.time,x.location].filter(Boolean).join(" · ")), pill(x.status||"Scheduled", x.status==="Completed"?"ok":"info"), "training", x.id)).join("")}</div></section>` : ""}
+    <div class="mf"><div class="tools"><button class="btn" data-a="dstaff" data-d="${d}">Full roster for this day</button><button class="btn w" data-a="add" data-c="vacations" data-start="${d}">Add leave</button></div><button class="btn pri" data-a="close">Done</button></div>`, true);
+}
+
+function vTraining(){
+  const t = today(), yr = t.slice(0,4);
+  const done = state.training.filter(x => x.status === "Completed" && (x.date||"").startsWith(yr));
+  const hrs = done.reduce((a,x)=>a+(+x.hours||0),0);
+  const byCat = {}; done.forEach(x => byCat[x.category||"Other"] = (byCat[x.category||"Other"]||0) + (+x.hours||0));
+  let list = state.training.slice();
+  if (trainFilter === "Upcoming") list = list.filter(x => x.date >= t && x.status !== "Cancelled").sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  else if (trainFilter === "Past") list = list.filter(x => x.date < t).sort((a,b)=>b.date.localeCompare(a.date));
+  else list.sort((a,b)=>b.date.localeCompare(a.date));
+  const maxCat = Math.max(1, ...Object.values(byCat));
+  return `${banners()}
+  <div class="head"><h2>Training</h2><div class="tools"><div class="seg">${["Upcoming","Past","All"].map(f=>`<button class="${f===trainFilter?"on":""}" data-a="tf" data-f="${f}">${f}</button>`).join("")}</div><button class="btn pri w" data-a="add" data-c="training">Add training</button></div></div>
+  <div class="tiles">
+    <div class="tile ok"><div class="k">${yr} hours completed</div><div class="v">${hrs}</div><div class="s">${done.length} sessions</div></div>
+    <div class="tile info"><div class="k">Scheduled next 30 days</div><div class="v">${state.training.filter(x=>x.status==="Scheduled"&&x.date>=t&&x.date<=addDays(t,30)).length}</div><div class="s">sessions</div></div>
+  </div>
+  <div class="grid g2" style="grid-template-columns:minmax(0,2fr) minmax(260px,1fr)">
+  <section class="panel"><div class="tw"><table><thead><tr><th>Date</th><th>Session</th><th>Category</th><th>Hrs</th><th>Status</th><th></th></tr></thead><tbody>
+    ${list.length ? list.map(x=>`<tr><td style="white-space:nowrap">${fmtShort(x.date)}<div class="hint">${dowOf(x.date)} · ${esc(shiftOn(x.date))} platoon${x.time?` · ${esc(x.time)}`:""}</div></td><td><b>${esc(x.title)}</b><div class="hint">${esc([x.location,x.instructor,x.audience].filter(Boolean).join(" · "))}</div></td><td>${esc(x.category||"")}</td><td>${esc(x.hours??"")}</td><td>${pill(x.status||"Scheduled", x.status==="Completed"?"ok":x.status==="Cancelled"?"":"info")}</td>
+    <td><div class="tools">${x.status==="Scheduled"&&x.date<=t&&canWrite?`<button class="btn sm" data-a="tdone" data-id="${esc(x.id)}">Mark complete</button>`:""}${editBtn("training",x.id)}</div></td></tr>`).join("") : `<tr><td colspan="6" class="empty">No ${trainFilter.toLowerCase()} training.</td></tr>`}
+  </tbody></table></div></section>
+  <section class="panel"><h3>${yr} hours by category</h3>${Object.keys(byCat).length ? Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="st"><div class="row"><span>${esc(k)}</span><b>${v}</b></div><div class="meter"><div class="f" style="width:${v/maxCat*100}%;background:var(--info)"></div></div></div>`).join("") : empty("No completed training this year yet.")}</section>
+  </div>`;
+}
+
+function vAssignments(){
+  const list = state.assignments.map(a => ({ a, s:asgState(a) })).filter(x => asgFilter === "All" || x.s[0] === asgFilter).sort((x,y)=>(x.a.start||"").localeCompare(y.a.start||""));
+  return `${banners()}
+  <div class="head"><h2>Special assignments</h2><div class="tools"><div class="seg">${["Active","Upcoming","Ended","All"].map(f=>`<button class="${f===asgFilter?"on":""}" data-a="af" data-f="${f}">${f}</button>`).join("")}</div><button class="btn pri w" data-a="add" data-c="assignments">Add assignment</button></div></div>
+  <section class="panel"><div class="tw"><table><thead><tr><th>Member</th><th>Assignment</th><th>Type</th><th>Dates</th><th>Status</th><th></th></tr></thead><tbody>
+  ${list.length ? list.map(({a,s})=>{ const p = person(a.name)||{}; return `<tr><td><b>${esc(a.name)}</b><div class="hint">${esc([p.rank,p.station,p.shift?p.shift+" shift":""].filter(Boolean).join(" · "))}</div></td><td>${esc(a.assignment)}${a.notes?`<div class="hint">${esc(a.notes)}</div>`:""}</td><td>${esc(a.type||"")}</td><td style="white-space:nowrap">${a.end?range(a.start,a.end):`From ${fmt(a.start)}`}</td><td>${pill(s[0],s[1])}</td><td>${editBtn("assignments",a.id)}</td></tr>`; }).join("") : `<tr><td colspan="6" class="empty">No ${asgFilter==="All"?"":asgFilter.toLowerCase()+" "}assignments.</td></tr>`}
+  </tbody></table></div></section>`;
+}
+
+function vReports(){
+  const rows = state.reports.map(r => ({ r, s:repState(r) }));
+  const rank = { Overdue:0, "Due soon":1, "On track":2, "No due date":3, Submitted:4 };
+  rows.sort((a,b) => rank[a.s[0]]-rank[b.s[0]] || (a.r.due||"").localeCompare(b.r.due||""));
+  const c = k => rows.filter(x => x.s[0] === k).length;
+  return `${banners()}
+  <div class="head"><h2>Reporting requirements</h2><button class="btn pri w" data-a="add" data-c="reports">Add report</button></div>
+  <div class="tiles">
+    <div class="tile ${c("Overdue")?"crit":"ok"}"><div class="k">Overdue</div><div class="v">${c("Overdue")}</div></div>
+    <div class="tile ${c("Due soon")?"warn":"ok"}"><div class="k">Due within 7 days</div><div class="v">${c("Due soon")}</div></div>
+    <div class="tile ok"><div class="k">On track</div><div class="v">${c("On track")}</div></div>
+  </div>
+  <section class="panel"><div class="hint">Marking a recurring report submitted moves its due date to the next period.</div><div class="tw"><table><thead><tr><th>Report</th><th>Frequency</th><th>Next due</th><th>Responsible</th><th>Last submitted</th><th>Status</th><th></th></tr></thead><tbody>
+  ${rows.length ? rows.map(({r,s})=>`<tr><td><b>${esc(r.title)}</b>${r.submitTo?`<div class="hint">To ${esc(r.submitTo)}</div>`:""}</td><td>${esc(r.frequency||"")}</td><td style="white-space:nowrap">${fmt(r.due)}</td><td>${esc(r.owner||"")}</td><td style="white-space:nowrap">${r.lastSubmitted?fmt(r.lastSubmitted):"—"}</td><td>${pill(s[0],s[1])}</td>
+  <td><div class="tools">${s[0]!=="Submitted"&&canWrite?`<button class="btn sm" data-a="rsub" data-id="${esc(r.id)}">Mark submitted</button>`:""}${editBtn("reports",r.id)}</div></td></tr>`).join("") : `<tr><td colspan="7" class="empty">No reporting requirements yet.</td></tr>`}
+  </tbody></table></div></section>`;
+}
+
+function vRoster(){
+  const q = rosterQ.toLowerCase();
+  const list = state.personnel.filter(p => rosterShift === "All" || p.shift === rosterShift)
+    .filter(p => !q || [p.name,p.rank,p.station,p.unit,p.empId,p.csGroup,p.licensure,p.certs].join(" ").toLowerCase().includes(q))
+    .sort(byCompany);
+  const extraKeys = [...new Set(state.personnel.flatMap(p => Object.keys(p.extra||{})))];
+  return `${banners()}
+  <div class="head"><h2>Roster · ${state.personnel.length} members</h2>
+    <div class="tools"><input id="rq" type="search" placeholder="Search name or unit…" value="${esc(rosterQ)}" style="width:200px">
+      <div class="seg">${["All",...shifts()].map(f=>`<button class="${f===rosterShift?"on":""}" data-a="rsf" data-f="${esc(f)}">${esc(f)}</button>`).join("")}</div>
+      <button class="btn w" data-a="import">Import from Excel</button><button class="btn pri w" data-a="add" data-c="personnel">Add member</button></div></div>
+  ${extraKeys.length ? `<div class="hint">Also tracking from your workbook: ${extraKeys.map(esc).join(", ")}. Tap a member to see everything.</div>` : ""}
+  <section class="panel"><div class="tw"><table><thead><tr><th>Name</th><th>Rank</th><th>Company</th><th>Platoon</th><th>City Shift Group</th><th>Cell</th><th>EMS</th><th>Hire date</th></tr></thead><tbody>
+  ${list.length ? list.map(p=>`<tr class="click" data-a="edit" data-c="personnel" data-id="${esc(p.id)}" tabindex="0"><td><b>${esc(p.name)}</b>${asgActive(p.name)?` ${pill("Special assignment","info")}`:""}</td><td>${esc(p.rank||"")}</td><td>${esc(p.unit||p.station||"")}</td><td><span class="sh">${esc(p.shift||"–")}</span></td><td>${esc(p.csGroup||"")}</td><td style="white-space:nowrap">${esc(p.phone||"")}</td><td>${esc(p.licensure||"")}</td><td style="white-space:nowrap">${fmt(p.hireDate)}</td></tr>`).join("") : `<tr><td colspan="8" class="empty">${state.personnel.length?"No members match.":"No members yet. Import your Excel workbook or add members one at a time."}</td></tr>`}
+  </tbody></table></div></section>`;
+}
+const asgActive = n => state.assignments.some(a => a.name === n && asgState(a)[0] === "Active");
+
+const RANK_ORD = { "FD-05":0, "FD-04":1, "FD-03":2, "FD-02":3, "FD-01":4 };
+const coIndex = n => { const i = stationNames().indexOf(n); return i < 0 ? 99 : i; };
+const byCompany = (a,b) => coIndex(a.station)-coIndex(b.station) || (RANK_ORD[a.rank]??9)-(RANK_ORD[b.rank]??9) || (a.name||"").localeCompare(b.name||"");
+/* status of a dated requirement that repeats every `months` */
+function reqStat(v, months){
+  if (!v) return { k:"none", html:`${pill("None on file","warn")}` };
+  if (!isDate(v)) return { k:"nodate", html:`${pill("Done · no date","")}` };
+  const due = addMonths(v, months), t = today();
+  if (due < t) return { k:"over", due, html:`<span>${fmtShort(v)} ’${v.slice(2,4)}</span>${pill("Overdue since "+fmtShort(due),"crit")}` };
+  if (dnum(due) - dnum(t) <= 30) return { k:"soon", due, html:`<span>${fmtShort(v)} ’${v.slice(2,4)}</span>${pill("Due "+fmtShort(due),"warn")}` };
+  return { k:"ok", due, html:`<span>${fmtShort(v)} ’${v.slice(2,4)}</span>${pill("Current","ok")}` };
+}
+const qNow = () => Math.floor((Number(today().slice(5,7))-1)/3);
+function trainStat(p){
+  if (p.q1 === undefined && p.q2 === undefined && p.q3 === undefined && p.q4 === undefined) return null;
+  const need = +p.qNeed || 48, q = [p.q1,p.q2,p.q3,p.q4].map(x => +x || 0), yr = q.reduce((a,b)=>a+b,0);
+  const qi = qNow(), thisQ = q[qi], pace = need * qi;
+  const behind = q.slice(0,qi).reduce((a,b)=>a+b,0) < pace;
+  return { need, q, yr, req: need*4, qi, thisQ, behind };
+}
+function physStat(p){
+  const r = reqStat(p.physical, S().reqMonths.physical);
+  const sch = isDate(p.physicalSched) && p.physicalSched >= today() ? p.physicalSched : null;
+  return { ...r, sch, html: r.html + (sch ? pill(`Scheduled ${fmtShort(sch)}${p.physicalTime?" · "+p.physicalTime:""}`,"info") : "") };
+}
+
+function vRequirements(){
+  const m = S().reqMonths, cos = ["All", ...stationNames()];
+  const list = state.personnel.filter(p => reqCo === "All" || p.station === reqCo).sort(byCompany);
+  const all = state.personnel;
+  const cnt = (fn) => all.filter(fn).length;
+  const physOver = cnt(p => physStat(p).k === "over" && !physStat(p).sch), physSch = all.filter(p => physStat(p).sch).sort((a,b)=>a.physicalSched.localeCompare(b.physicalSched));
+  const patOver = cnt(p => p.mandatory !== "No" && ["over","none"].includes(reqStat(p.pat, m.pat).k));
+  const emsOver = cnt(p => ["over","none"].includes(reqStat(p.refresher, m.refresher).k));
+  const hazOver = cnt(p => ["over","none"].includes(reqStat(p.hazmat, m.hazmat).k));
+  const ts = all.map(trainStat).filter(Boolean), behind = ts.filter(t => t.behind).length;
+  const Q = ["1st","2nd","3rd","4th"][qNow()];
+  return `${banners()}
+  <div class="head"><h2>Member requirements</h2>
+    <div class="tools"><label for="reqCo" style="flex-direction:row;align-items:center;gap:6px">Company <select id="reqCo" class="inline">${cos.map(c=>`<option${c===reqCo?" selected":""}>${esc(c)}</option>`).join("")}</select></label></div></div>
+  <div class="tiles">
+    <div class="tile ${physOver?"crit":"ok"}"><div class="k">Physicals overdue</div><div class="v">${physOver}</div><div class="s">${physSch.length} scheduled</div></div>
+    <div class="tile ${emsOver?"crit":"ok"}"><div class="k">EMS refresher past due</div><div class="v">${emsOver}</div><div class="s">Every ${m.refresher} months</div></div>
+    <div class="tile ${patOver?"crit":"ok"}"><div class="k">PAT past due</div><div class="v">${patOver}</div><div class="s">Mandatory members only</div></div>
+    <div class="tile ${hazOver?"warn":"ok"}"><div class="k">HazMat Ops past due</div><div class="v">${hazOver}</div><div class="s">Every ${m.hazmat} months</div></div>
+    <div class="tile ${behind?"warn":"ok"}"><div class="k">Behind on T2 hours</div><div class="v">${behind}</div><div class="s">of ${ts.length} tracked, before ${Q} qtr</div></div>
+  </div>
+  <section class="panel"><div class="hint">Due dates count forward from the last date on file: physicals every ${m.physical} months, PAT every ${m.pat}, HazMat Ops every ${m.hazmat}, EMS refresher every ${m.refresher}. Change these in Setup. Tap a member to update their dates.</div>
+  <div class="tw"><table><thead><tr><th>Member</th><th>EMS license</th><th>EMS refresher</th><th>Physical</th><th>PAT</th><th>HazMat Ops</th><th>PPE</th><th>T2 hours ${today().slice(0,4)}</th></tr></thead><tbody>
+  ${list.length ? list.map(p => { const t = trainStat(p); return `<tr class="click" data-a="edit" data-c="personnel" data-id="${esc(p.id)}" tabindex="0">
+    <td><b>${esc(p.name)}</b><div class="hint">${esc([p.rank,p.unit].filter(Boolean).join(" · "))}</div></td>
+    <td>${esc(p.licensure||"—")}${p.licYear?`<div class="hint">Expires ${esc(p.licYear.toLowerCase())} years</div>`:""}</td>
+    <td><div class="cell2">${reqStat(p.refresher, m.refresher).html}</div></td>
+    <td><div class="cell2">${physStat(p).html}</div></td>
+    <td><div class="cell2">${p.mandatory === "No" ? pill("Not mandatory","") : reqStat(p.pat, m.pat).html}</div></td>
+    <td><div class="cell2">${reqStat(p.hazmat, m.hazmat).html}</div></td>
+    <td>${p.ppe ? (isDate(p.ppe) ? fmtShort(p.ppe) : pill("Done","ok")) : pill("None on file","warn")}</td>
+    <td style="min-width:150px">${t ? `<div class="row" style="display:flex;justify-content:space-between;gap:6px"><b>${t.yr} / ${t.req}</b>${t.behind?pill("Behind","warn"):pill("On pace","ok")}</div><div class="meter" style="margin-top:4px"><div class="f${t.behind?" crit":""}" style="width:${Math.min(100,t.yr/t.req*100)}%"></div></div><div class="hint">By qtr: ${t.q.join(" · ")}</div>` : pill("No T2 record","warn")}</td>
+  </tr>`; }).join("") : `<tr><td colspan="8" class="empty">No members${reqCo!=="All"?" in "+esc(reqCo):""}.</td></tr>`}
+  </tbody></table></div></section>
+  <section class="panel"><h3>Scheduled physicals</h3><div class="list">${physSch.length ? physSch.map(p=>`<div class="li"><div><div class="t">${esc(p.name)}</div><div class="d">${esc(p.unit||"")} · last physical ${fmt(p.physical)}</div></div>${pill(`${dowOf(p.physicalSched)} ${fmtShort(p.physicalSched)}${p.physicalTime?" · "+p.physicalTime:""}`,"info")}</div>`).join("") : empty("No physicals scheduled.")}</div></section>`;
+}
+
+function vSetup(){
+  const s = S();
+  return `<div class="head"><h2>Setup</h2></div>
+  <section class="panel"><h3>Battalion</h3>
+    <form class="form" id="setForm">
+      <label for="s_b">Portal name<input id="s_b" value="${esc(s.battalion)}"></label>
+      <label for="s_sh">Platoons in rotation order<input id="s_sh" value="${esc(shifts().join(", "))}" placeholder="A, B, C"></label>
+      <label for="s_a">A date the first shift (${esc(shifts()[0])}) works<input id="s_a" type="date" value="${esc(s.shiftAnchor)}"></label>
+      <label for="s_h">Track<select id="s_h"><option value="">All platoons</option>${shifts().map(x=>`<option value="${esc(x)}"${x===s.homeShift?" selected":""}>${esc(x)} platoon only</option>`).join("")}</select></label>
+      <label for="s_ka">City Shift Group: a date your platoon works<input id="s_ka" type="date" value="${esc((s.kelly||{}).anchor||"")}"></label>
+      <label for="s_kg">City Shift Group # off that day<input id="s_kg" type="number" min="1" value="${esc((s.kelly||{}).start||"")}"></label>
+      <label for="s_kn">Number of City Shift Groups<input id="s_kn" type="number" min="1" value="${esc((s.kelly||{}).groups||"")}"></label>
+      <label for="s_m">Vacation slots per day (rest are alternates)<input id="s_m" type="number" min="0" value="${esc(s.maxOff)}"></label>
+      <label for="s_rp">Physical every (months)<input id="s_rp" type="number" min="1" value="${esc(s.reqMonths.physical)}"></label>
+      <label for="s_rt">PAT every (months)<input id="s_rt" type="number" min="1" value="${esc(s.reqMonths.pat)}"></label>
+      <label for="s_rh">HazMat Ops every (months)<input id="s_rh" type="number" min="1" value="${esc(s.reqMonths.hazmat)}"></label>
+      <label for="s_re">EMS refresher every (months)<input id="s_re" type="number" min="1" value="${esc(s.reqMonths.refresher)}"></label>
+      <label class="full" for="s_st">Companies and minimum staffing, one per line as Name | minimum<textarea id="s_st" rows="9" placeholder="Engine 3 | 3">${esc(s.stations.map(x=>`${x.name} | ${x.min}`).join("\n"))}</textarea></label>
+    </form>
+    <div class="hint">The shift calendar assumes a 24-on / 48-off rotation: each day goes to the next shift in the list. Today works out to ${esc(shiftOn(today()))} shift${s.kelly ? `; the next ${esc(s.homeShift||"")} platoon day has City Shift Group ${kellyGroup(homeDate()) ?? "–"} off` : ""}.</div>
+    <div class="err" id="serr"></div>
+    <div class="w"><button class="btn pri" data-a="saveset">Save setup</button></div>
+  </section>
+  ${sample() ? `<section class="panel w"><h3>Sample data</h3><div class="hint">The portal opened with made-up members, leave, training and reports so you could see it working. Removing it deletes only those sample records; anything you've added stays.</div><div><button class="btn danger" data-a="clearsample">Remove sample data</button></div></section>` : ""}
+  ${isAdmin ? `<section class="panel"><h3>Back up or move your data</h3><div class="hint">Saves every member, leave entry, vacation-book order, staffing change, training, assignment, report and setting to one file (portal-data.json). Export one regularly as a backup. The file includes members' cell numbers and email addresses, so store it somewhere private.</div><div><button class="btn pri" data-a="export">Export all data</button></div></section>` : ""}
+  ${isAdmin ? vAccess() : `<section class="panel"><h3>Your access</h3><div class="hint">Signed in as ${esc(me.email)} · ${esc(ROLE_LABEL[me.role]||me.role)}. Ask the district chief if you need more access.</div></section>`}
+  ${isAdmin ? `<section class="panel"><h3>Upload roster</h3><div class="hint">When you update the District 4-B Master Roster workbook, upload it here to bring the app's member list up to date. You'll review every change before it's saved. Addresses, birth dates and emergency contacts are never uploaded.</div><div><button class="btn pri" data-a="rosterup">Upload roster</button></div></section>` : ""}
+  ${isAdmin ? `<section class="panel"><h3>Load data from a file</h3><div class="hint">Choose a portal-data.json file made with "Export all data", either from the Claude version of the portal or from this app. Records with the same ID are overwritten; nothing else is deleted. Personal details (addresses, birth dates, emergency contacts) in the file are skipped.</div><label for="impData">Data file<input id="impData" type="file" accept=".json,application/json"></label><div id="impDataMsg" class="hint"></div></section>` : ""}`;
+}
+
+const VIEWS = { requirements:vRequirements, dashboard:vDashboard, staffing:vStaffing, vacation:vVacation, training:vTraining, assignments:vAssignments, reports:vReports, roster:vRoster, setup:vSetup };
+
+function render(){
+  if (document.body.classList.contains("locked")) return;
+  const s = S(), t = today();
+  $("#bname").textContent = s.battalion || "TFD District 4-B";
+  const hd = homeDate();
+  $("#bmeta").innerHTML = `${dowOf(t)} ${fmt(t)} · <b>On duty</b><span class="shiftchip">${esc(shiftOn(t))} PLATOON</span>${s.homeShift && hd !== t ? ` · Next ${esc(s.homeShift)} platoon day <b>${dowOf(hd)} ${fmtShort(hd)}</b>` : ""}`;
+  document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on", a.dataset.v === view));
+  const ae = document.activeElement, keepId = ae && ae.id && $("#main").contains(ae) ? ae.id : null, pos = keepId && ae.selectionStart;
+  $("#main").innerHTML = VIEWS[view]();
+  if (keepId){ const el = document.getElementById(keepId); if (el){ el.focus(); try{ el.setSelectionRange(pos,pos); }catch(e){} } }
+}
+function route(){ const h = location.hash.slice(1); view = VIEWS[h] ? h : "dashboard"; render(); window.scrollTo(0,0); }
+
+/* ---------- actions ---------- */
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-a]"); if (!el) return;
+  const a = el.dataset.a;
+  if (a === "scrim"){ if (e.target === el) closeModal(); return; }
+  if (a === "close") return closeModal();
+  if (a === "save") return saveForm();
+  if (a === "del") return delDoc();
+  if (a === "add"){ const c = el.dataset.c, def = {};
+    if (c === "staffing") Object.assign(def, { date: view === "staffing" ? staffDate : today(), kind:"Sick" });
+    if (c === "vacations") Object.assign(def, { start: el.dataset.start || "", status:"Requested", type:"Vacation" });
+    if (c === "training") Object.assign(def, { date: today(), status:"Scheduled", hours:2 });
+    if (c === "assignments") Object.assign(def, { start: today() });
+    if (c === "reports") Object.assign(def, { frequency:"Monthly", status:"Open" });
+    return openForm(c, null, def); }
+  if (a === "edit"){ const d = state[el.dataset.c].find(x => x.id === el.dataset.id); if (d) openForm(el.dataset.c, d); return; }
+  if (a === "day"){ const n = +el.dataset.n; staffDate = n === 0 ? homeDate() : addDays(staffDate, n * stepDays()); return render(); }
+  if (a === "year"){ vacYear += +el.dataset.n; return render(); }
+  if (a === "vday"){ vacSel = el.dataset.d; render(); return openDay(vacSel); }
+  if (a === "mvto"){ const n = el.dataset.n, c = el.dataset.c; closeModal(); return moveMember(n, c, staffDate); }
+  if (a === "dstep"){ vacSel = addDays(vacSel, (+el.dataset.n) * stepDays()); vacYear = Number(vacSel.slice(0,4)); render(); return openDay(vacSel); }
+  if (a === "dstaff"){ staffDate = el.dataset.d; closeModal(); location.hash = "#staffing"; return; }
+  if (a === "vf"){ vacFilter = el.dataset.f; return render(); }
+  if (a === "tf"){ trainFilter = el.dataset.f; return render(); }
+  if (a === "af"){ asgFilter = el.dataset.f; return render(); }
+  if (a === "rsf"){ rosterShift = el.dataset.f; return render(); }
+  if (a === "vset") return quick("vacations", el.dataset.id, { status: el.dataset.s }, el.dataset.s === "Approved" ? "Leave approved" : "Leave denied");
+  if (a === "creq") return openCancel(el.dataset.id, el.dataset.d);
+  if (a === "csend") return sendCancel(el);
+  if (a === "cdec") return decideCancel(el.dataset.id, el.dataset.s, el);
+  if (a === "tdone") return quick("training", el.dataset.id, { status:"Completed" }, "Marked complete");
+  if (a === "rsub"){ const r = state.reports.find(x => x.id === el.dataset.id); if (!r) return;
+    const step = { Daily:[0,1], Weekly:[0,7], Monthly:[1,0], Quarterly:[3,0], Annual:[12,0] }[r.frequency];
+    const upd = { lastSubmitted: today() };
+    if (step && isDate(r.due)){ upd.due = step[0] ? addMonths(r.due, step[0]) : addDays(r.due, step[1]); upd.status = "Open"; }
+    else upd.status = "Submitted";
+    return quick("reports", r.id, upd, step ? `Submitted. Next due ${fmtShort(upd.due)}` : "Marked submitted"); }
+  if (a === "export") return exportData(el);
+  if (a === "saveset") return saveSettings();
+  if (a === "clearsample") return clearSample(el);
+  if (a === "import") return openImport();
+  if (a === "impgo") return runImport(el);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("#modalRoot").innerHTML) closeModal();
+  if (e.key === "Enter" && e.target.matches("tr.click")) e.target.click();
+});
+document.addEventListener("input", e => { if (e.target.id === "rq"){ rosterQ = e.target.value; render(); } });
+document.addEventListener("change", e => {
+  if (e.target.id === "staffDate" && isDate(e.target.value)){ staffDate = e.target.value; render(); }
+  if (e.target.id === "impFile") readWorkbook(e.target.files[0]);
+  if (e.target.id === "impSheet") loadSheet(e.target.value);
+  if (e.target.id === "reqCo"){ reqCo = e.target.value; render(); }
+});
+async function quick(coll, id, upd, msg){
+  try { if (!db) throw 0; await db.collection(coll).doc(id).update(upd); toast(msg); } catch(e){ toast(writeErr(e)); }
+}
+async function saveSettings(){
+  const stations = $("#s_st").value.split("\n").map(l => l.trim()).filter(Boolean).map(l => { const [n,m] = l.split("|"); return { name:n.trim(), min: Math.max(0, parseInt(m)||0) }; });
+  const sh = $("#s_sh").value.split(",").map(x => x.trim()).filter(Boolean);
+  const ka = $("#s_ka").value, kg = parseInt($("#s_kg").value), kn = parseInt($("#s_kn").value);
+  const kelly = isDate(ka) && kg && kn ? { anchor:ka, start:kg, groups:kn } : null;
+  if (!isDate($("#s_a").value)){ $("#serr").textContent = "Pick a date the first shift works."; return; }
+  const data = { battalion: $("#s_b").value.trim() || "TFD District 4-B", shifts: sh.length ? sh : ["A","B","C"], shiftAnchor: $("#s_a").value, maxOff: Math.max(0, parseInt($("#s_m").value)||0), stations, homeShift: $("#s_h").value, kelly,
+    reqMonths: { physical: parseInt($("#s_rp").value)||12, pat: parseInt($("#s_rt").value)||12, hazmat: parseInt($("#s_rh").value)||12, refresher: parseInt($("#s_re").value)||12 } };
+  if (state.settings && state.settings.sample) data.sample = true;
+  try { if (!db) throw 0; await db.doc("config/settings").set(data); toast("Setup saved"); } catch(e){ $("#serr").textContent = writeErr(e); }
+}
+async function clearSample(btn){
+  if (btn.dataset.armed !== "1"){ btn.dataset.armed = "1"; btn.textContent = "Tap again to remove all sample records"; return; }
+  btn.disabled = true; btn.textContent = "Removing…";
+  try {
+    for (const c of COLLS) for (const d of state[c].filter(x => x.sample)) await db.collection(c).doc(d.id).delete();
+    if (state.settings && state.settings.sample){ const s = { ...state.settings }; delete s.sample; await db.doc("config/settings").set(s); }
+    toast("Sample data removed");
+  } catch(e){ toast(writeErr(e)); btn.disabled = false; }
+}
+
+/* ---------- Excel import ---------- */
+const MAP_FIELDS = [["","(keep as extra info)"],["skip","(don't import)"],["name","Full name"],["first","First name"],["last","Last name"],["rank","Rank"],["shift","Shift"],["station","Station"],["unit","Unit"],["position","Riding position"],["csGroup","City Shift Group #"],["roic","ROIC #"],["hireDate","Hire date"],["licensure","Medical licensure"],["empId","Employee #"],["phone","Phone"],["email","Email"],["certs","Certifications"],["notes","Notes"]];
+const GUESS = [["first",/first/],["last",/last|surname/],["name",/^(full\s*)?name$|^member|^employee name|^ff name/],["email",/e-?mail/],["phone",/phone|cell|mobile/],["empId",/emp|badge|payroll|^id$|id\s*#|number|#/],["roic",/roic/],["csGroup",/c\/?s\s*group|shift group/],["hireDate",/hire/],["licensure",/licens/],["rank",/rank|title|grade/],["shift",/shift|platoon/],["station",/station|house|^sta\b|fire hall/],["unit",/unit|company|apparatus|engine|truck/],["position",/position|seat|riding/],["certs",/cert|qualif|license/],["notes",/note|comment/]];
+let imp = null;
+function openImport(){
+  if (typeof XLSX === "undefined"){ toast("The Excel reader didn't load. Reload the page and try again."); return; }
+  imp = { wb:null, rows:[], headers:[], map:{} };
+  showModal(`<h2>Import members from Excel</h2>
+    <div class="hint">Choose your workbook (.xlsx, .xls or .csv). The first row of the sheet should be column headings. Members whose name matches someone already on the roster are updated, not duplicated.</div>
+    <label for="impFile">Workbook<input id="impFile" type="file" accept=".xlsx,.xls,.xlsm,.csv"></label>
+    <div id="impBody"></div><div class="err" id="ierr"></div>
+    <div class="mf"><span></span><div class="tools"><button class="btn" data-a="close">Cancel</button><button class="btn pri" data-a="impgo" id="impGo" disabled>Import</button></div></div>`, true);
+}
+function readWorkbook(file){
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => { try { imp.wb = XLSX.read(new Uint8Array(r.result), { type:"array", cellDates:true }); loadSheet(imp.wb.SheetNames[0]); } catch(e){ $("#ierr").textContent = "That file couldn't be read as a spreadsheet."; } };
+  r.readAsArrayBuffer(file);
+}
+function loadSheet(name){
+  const ws = imp.wb.Sheets[name];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval:"", raw:false, dateNF:"yyyy-mm-dd" });
+  imp.rows = rows.filter(r => Object.values(r).some(v => String(v).trim() !== ""));
+  imp.headers = rows.length ? Object.keys(rows[0]).filter(h => !/^__EMPTY/.test(h) || imp.rows.some(r => r[h] !== "")) : [];
+  imp.map = {}; const used = new Set();
+  imp.headers.forEach(h => { const l = h.toLowerCase().trim(); const g = GUESS.find(([k,re]) => !used.has(k) && re.test(l)); if (g){ imp.map[h] = g[0]; used.add(g[0]); } else imp.map[h] = ""; });
+  const sheetSel = imp.wb.SheetNames.length > 1 ? `<label for="impSheet">Sheet<select id="impSheet">${imp.wb.SheetNames.map(n=>`<option${n===name?" selected":""}>${esc(n)}</option>`).join("")}</select></label>` : "";
+  $("#impBody").innerHTML = `${sheetSel}<h3 style="margin-top:6px">${imp.rows.length} rows found · match your columns</h3>
+    <div class="hint">Shift values like "B Shift" or "B Platoon" become B. Company values like "E03" match "Engine 3" from Setup.</div>
+    <div class="tw"><table><thead><tr><th>Your column</th><th>Goes to</th><th>First value</th></tr></thead><tbody>
+    ${imp.headers.map((h,i)=>`<tr><td><b>${esc(h)}</b></td><td><select id="map_${i}" aria-label="Field for ${esc(h)}">${MAP_FIELDS.map(([k,l])=>`<option value="${k}"${imp.map[h]===k?" selected":""}>${esc(l)}</option>`).join("")}</select></td><td class="hint">${esc(String((imp.rows[0]||{})[h]??"").slice(0,40))}</td></tr>`).join("")}
+    </tbody></table></div>`;
+  $("#impGo").disabled = !imp.rows.length;
+  $("#impGo").textContent = `Import ${imp.rows.length} members`;
+}
+function normShift(v){ const s = String(v).trim(); if (!s) return ""; const sh = shifts(); const hit = sh.find(x => x.toLowerCase() === s.toLowerCase()); if (hit) return hit; const m = s.match(/\b([A-Za-z0-9])\b/g) || []; for (const t of m){ const h = sh.find(x => x.toLowerCase() === t.toLowerCase()); if (h) return h; } return s; }
+function normStation(v){ const s = String(v).trim(); if (!s) return ""; const st = stationNames(); const hit = st.find(x => x.toLowerCase() === s.toLowerCase()); if (hit) return hit; const num = (s.match(/\d+/)||[])[0]; if (num){ const h = st.find(x => (x.match(/\d+/)||[])[0] === num); if (h) return h; } return s; }
+async function runImport(btn){
+  imp.headers.forEach((h,i) => imp.map[h] = $("#map_"+i).value);
+  const vals = Object.values(imp.map);
+  if (!vals.includes("name") && !(vals.includes("first") || vals.includes("last"))){ $("#ierr").textContent = "Match at least one column to Full name, or to First and Last name."; return; }
+  if (!db){ $("#ierr").textContent = writeErr(); return; }
+  btn.disabled = true;
+  let n = 0, upd = 0, skipped = 0;
+  for (const row of imp.rows){
+    const rec = { extra:{} }; let first = "", last = "";
+    for (const h of imp.headers){
+      const f = imp.map[h], v = String(row[h] ?? "").trim();
+      if (f === "skip") continue;
+      if (f === "first") first = v; else if (f === "last") last = v;
+      else if (f) rec[f] = v; else if (v !== "") rec.extra[h] = v;
+    }
+    if (!rec.name) rec.name = [first, last].filter(Boolean).join(" ");
+    if (!rec.name){ skipped++; continue; }
+    if (rec.shift) rec.shift = normShift(rec.shift);
+    if (rec.station) rec.station = normStation(rec.station);
+    if (!Object.keys(rec.extra).length) delete rec.extra;
+    const ex = state.personnel.find(p => (p.name||"").toLowerCase() === rec.name.toLowerCase());
+    try {
+      if (ex){ const merged = { ...ex, ...rec, extra:{ ...(ex.extra||{}), ...(rec.extra||{}) } }; delete merged.id; delete merged.sample; if (!Object.keys(merged.extra).length) delete merged.extra; await db.collection("personnel").doc(ex.id).set(merged); upd++; }
+      else { await db.collection("personnel").doc().set(rec); n++; }
+    } catch(e){ $("#ierr").textContent = writeErr(e) + ` (${n+upd} saved before the error)`; btn.disabled = false; return; }
+    btn.textContent = `Importing… ${n+upd} of ${imp.rows.length}`;
+  }
+  closeModal();
+  toast(`Imported ${n} new, updated ${upd}${skipped?`, skipped ${skipped} rows with no name`:""}`);
+}
+
+/* ---------- backup / export ---------- */
+function buildExport(){
+  const strip = arr => arr.map(d => { const { id, ...rest } = d; return { id, data: rest }; });
+  const collections = {}; COLLS.forEach(c => collections[c] = strip(state[c]));
+  return JSON.stringify({ format:"tfd-portal-v1", exported:new Date().toISOString(), settings:state.settings, vacbook:state.vacbook, collections }, null, 1);
+}
+async function saveFile(filename, text){
+  const url = URL.createObjectURL(new Blob([text], { type:"application/json" }));
+  const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+async function exportData(btn){
+  const counts = COLLS.map(c => state[c].length).reduce((a,b)=>a+b,0);
+  btn.disabled = true;
+  try { await saveFile(`portal-data-${today()}.json`, buildExport()); toast(`Exported ${counts} records`); }
+  catch(e){ toast(e && e.message ? "Couldn't save the file: " + e.message : "The download was cancelled."); }
+  btn.disabled = false;
+}
+
+/* ---------- temporary moves (drag and drop) ---------- */
+async function moveMember(name, to, date){
+  const p = person(name) || {};
+  const ex = state.staffing.find(x => x.date === date && x.name === name && x.kind === "Temporary move");
+  try {
+    if (!db) throw 0;
+    if (to === p.station){ if (ex) await db.collection("staffing").doc(ex.id).delete(); toast(`${name} back on ${to}`); return; }
+    const data = { date, kind:"Temporary move", name, station:to, unit:unitOf(to), position:p.position||"", note:`Temporary move from ${p.station||"no company"} for ${fmtShort(date)}`, added: Date.now() };
+    await (ex ? db.collection("staffing").doc(ex.id) : db.collection("staffing").doc()).set(data);
+    toast(`${name} moved to ${to} for ${fmtShort(date)}`);
+  } catch(e){ toast(writeErr(e)); }
+}
+function pickCompany(name, from){
+  const p = person(name) || {};
+  modalCtx = { pick:name };
+  showModal(`<h2>Move ${esc(name)}</h2><div class="hint">For ${dowOf(staffDate)}, ${fmt(staffDate)} only. Home company: ${esc(p.station||"none")}.</div>
+    <div class="list">${stationNames().map(c => `<div class="li"><div><div class="t">${esc(c)}</div>${c===p.station?`<div class="d">Home company</div>`:""}</div>${c===from ? pill("Here now","ok") : `<button class="btn sm${c===p.station?"":" pri"}" data-a="mvto" data-n="${esc(name)}" data-c="${esc(c)}">${c===p.station?"Return here":"Move here"}</button>`}</div>`).join("")}</div>
+    <div class="mf"><span></span><button class="btn" data-a="close">Cancel</button></div>`);
+}
+(() => {
+  let st = null; // {el, name, from, x, y, timer, drag, ghost, pid, touch}
+  const target = (x, y) => { const e = document.elementFromPoint(x, y); return e && e.closest("[data-drop]"); };
+  const clearHi = () => document.querySelectorAll(".st.dropok").forEach(e => e.classList.remove("dropok"));
+  const begin = () => {
+    if (!st) return; st.drag = true;
+    st.ghost = st.el.cloneNode(true); st.ghost.classList.add("ghost"); st.ghost.style.left = st.x+"px"; st.ghost.style.top = st.y+"px";
+    document.body.appendChild(st.ghost); st.el.classList.add("lifted");
+    if (navigator.vibrate) try { navigator.vibrate(15); } catch(e){}
+  };
+  const end = () => { if (!st) return; clearTimeout(st.timer); if (st.ghost) st.ghost.remove(); if (st.el) st.el.classList.remove("lifted"); clearHi(); st = null; };
+  document.addEventListener("pointerdown", e => {
+    const el = e.target.closest(".mem[data-drag]"); if (!el || e.button > 0) return;
+    st = { el, name: el.dataset.drag, from: el.dataset.from, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, drag:false, touch: e.pointerType !== "mouse" };
+    if (st.touch) st.timer = setTimeout(begin, 350);
+  });
+  document.addEventListener("pointermove", e => {
+    if (!st) return; st.x = e.clientX; st.y = e.clientY;
+    const moved = Math.hypot(st.x - st.sx, st.y - st.sy) > 8;
+    if (!st.drag){ if (moved){ if (st.touch){ end(); return; } begin(); } else return; }
+    st.ghost.style.left = st.x+"px"; st.ghost.style.top = st.y+"px";
+    clearHi(); const t = target(st.x, st.y); if (t && t.dataset.drop !== st.from) t.classList.add("dropok");
+  });
+  document.addEventListener("touchmove", e => { if (st && st.drag) e.preventDefault(); }, { passive:false });
+  document.addEventListener("pointerup", e => {
+    if (!st) return;
+    const s = st;
+    if (s.drag){ const t = target(e.clientX, e.clientY); end(); if (t && t.dataset.drop !== s.from) moveMember(s.name, t.dataset.drop, staffDate); }
+    else { end(); pickCompany(s.name, s.from); }
+  });
+  document.addEventListener("pointercancel", end);
+  document.addEventListener("contextmenu", e => { if (e.target.closest(".mem[data-drag]")) e.preventDefault(); });
+  document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches(".mem[data-drag]")) pickCompany(e.target.dataset.drag, e.target.dataset.from); });
+})();
+
+/* ---------- data ---------- */
+window.addEventListener("hashchange", route);
+route();
+/* ---------- access list (admin) ---------- */
+const ROLE_LABEL = { viewer:"Viewer", editor:"Editor", admin:"Admin" };
+let me = { email:"", role:"" };
+state.access = [];
+function vAccess(){
+  const list = state.access.slice().sort((a,b) => (a.name||a.id).localeCompare(b.name||b.id));
+  const onList = new Set(list.map(a => a.id));
+  const missing = state.personnel.filter(p => p.email && !onList.has(p.email.toLowerCase()));
+  return `<section class="panel"><h3>Who can sign in · ${list.length}</h3>
+    <div class="hint"><b>Viewer</b> can see everything. <b>Editor</b> can also log staffing changes, leave, training and roster edits. <b>Admin</b> can also manage this list and load data. The first time, each person taps "Create your password" on the sign-in page using the email listed here.</div>
+    <form class="form" id="accForm"><label for="acc_e">Email<input id="acc_e" type="email" placeholder="name@cityoftulsa.org"></label><label for="acc_n">Name<input id="acc_n"></label><label for="acc_r">Access<select id="acc_r"><option value="viewer">Viewer</option><option value="editor">Editor</option><option value="admin">Admin</option></select></label></form>
+    <div class="tools"><button class="btn pri" data-a="accadd">Add person</button>${missing.length ? `<button class="btn" data-a="accall">Add ${missing.length} roster member${missing.length>1?"s":""} as Viewers</button>` : ""}</div>
+    <div class="err" id="accErr"></div>
+    <div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Access</th><th></th></tr></thead><tbody>
+    ${list.map((a,i) => `<tr><td>${esc(a.name||"")}</td><td>${esc(a.id)}</td><td>${a.id === me.email ? pill(ROLE_LABEL[a.role]||a.role,"info") : `<select id="accr_${i}" data-email="${esc(a.id)}" class="inline" aria-label="Access for ${esc(a.id)}">${["viewer","editor","admin"].map(r=>`<option value="${r}"${r===a.role?" selected":""}>${ROLE_LABEL[r]}</option>`).join("")}</select>`}</td><td>${a.id === me.email ? `<span class="hint">You</span>` : `<button class="btn sm danger" data-a="accdel" data-email="${esc(a.id)}">Remove</button>`}</td></tr>`).join("")}
+    </tbody></table></div></section>`;
+}
+async function accSet(email, data){ await db.collection("access").doc(email.toLowerCase().trim()).set(data); }
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-a]"); if (!el) return;
+  const a = el.dataset.a;
+  if (a === "signout"){ try { await FB.A.signOut(FB.auth); } catch(x){} location.reload(); }
+  if (a === "accadd"){
+    const email = $("#acc_e").value.trim().toLowerCase(), name = $("#acc_n").value.trim(), role = $("#acc_r").value;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ $("#accErr").textContent = "Enter a full email address."; return; }
+    try { await accSet(email, { role, name: name || (state.personnel.find(p => (p.email||"").toLowerCase() === email)||{}).name || "", added: Date.now() }); toast(`${email} can now sign in`); } catch(x){ $("#accErr").textContent = writeErr(x); }
+  }
+  if (a === "accall"){
+    if (el.dataset.armed !== "1"){ el.dataset.armed = "1"; el.textContent = "Tap again to add them all as Viewers"; return; }
+    el.disabled = true; const have = new Set(state.access.map(x => x.id)); let n = 0;
+    try { for (const p of state.personnel) { const em = (p.email||"").toLowerCase(); if (em && !have.has(em)){ await accSet(em, { role:"viewer", name:p.name, added:Date.now() }); n++; } } toast(`Added ${n} members as Viewers`); } catch(x){ toast(writeErr(x)); }
+  }
+  if (a === "accdel"){
+    if (el.dataset.armed !== "1"){ el.dataset.armed = "1"; el.textContent = "Tap again to remove"; return; }
+    try { await db.collection("access").doc(el.dataset.email).delete(); toast("Removed"); } catch(x){ toast(writeErr(x)); }
+  }
+});
+document.addEventListener("change", async e => {
+  if (e.target.id && e.target.id.startsWith("accr_")){
+    const em = e.target.dataset.email, cur = state.access.find(x => x.id === em) || {};
+    try { const { id, ...rest } = cur; await accSet(em, { ...rest, role: e.target.value }); toast(`${em} is now ${ROLE_LABEL[e.target.value]}`); } catch(x){ toast(writeErr(x)); }
+  }
+  if (e.target.id === "impData" && e.target.files[0]) importData(e.target.files[0]);
+});
+
+/* ---------- load data file (admin) ---------- */
+async function importData(file){
+  const msg = t => { const m = $("#impDataMsg"); if (m) m.textContent = t; };
+  let obj; try { obj = JSON.parse(await file.text()); } catch(x){ msg("That file isn't a portal data file."); return; }
+  if (!obj || obj.format !== "tfd-portal-v1" || !obj.collections){ msg("That file isn't a portal data file made with Export all data."); return; }
+  const ops = [];
+  if (obj.settings) ops.push(["config", "settings", obj.settings]);
+  if (obj.vacbook) ops.push(["config", "vacbook", obj.vacbook]);
+  for (const [c, docs] of Object.entries(obj.collections)) if (COLLS.includes(c)) for (const d of docs) if (d && d.id) ops.push([c, d.id, d.data || {}]);
+  try {
+    for (let i = 0; i < ops.length; i += 400){
+      const b = FB.fs.writeBatch(FB.db);
+      ops.slice(i, i+400).forEach(([c,id,data]) => b.set(FB.fs.doc(FB.db, c, id), clean(data)));
+      await b.commit(); msg(`Loading… ${Math.min(i+400, ops.length)} of ${ops.length}`);
+    }
+    msg(`Loaded ${ops.length} records from ${file.name}.`); toast("Data loaded");
+  } catch(x){ msg("Loading stopped: " + (x.code === "permission-denied" ? "only Admins can load data." : x.message)); }
+}
+const clean = o => JSON.parse(JSON.stringify(o, (k,v) => v === undefined ? null : v));
+
+/* ---------- Firebase connection ---------- */
+let FB = null;
+const FB_VERSION = "10.12.2";
+const lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+const lsSet = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
+const lsDel = k => { try { localStorage.removeItem(k); } catch(e){} };
+const fsErr = err => ({ code: err && err.code === "permission-denied" ? "invalid_argument" : err && err.code === "resource-exhausted" ? "quota_exceeded" : "unavailable", message: err && err.message });
+const guard = p => p.catch(err => { throw fsErr(err); });
+function snapDoc(sn){ return { id:sn.id, exists:sn.exists(), data:() => sn.data(), metadata:sn.metadata }; }
+function wrapDoc(ref){
+  const F = FB.fs;
+  return { id:ref.id, path:ref.path,
+    get: async () => snapDoc(await F.getDoc(ref)),
+    set: d => guard(F.setDoc(ref, clean(d))), update: d => guard(F.updateDoc(ref, clean(d))), delete: () => guard(F.deleteDoc(ref)),
+    onSnapshot: (n, e) => F.onSnapshot(ref, sn => n(snapDoc(sn)), err => e && e(fsErr(err))) };
+}
+function wrapColl(path){
+  const F = FB.fs, cref = F.collection(FB.db, path);
+  return { path,
+    doc: id => wrapDoc(id ? F.doc(cref, id) : F.doc(cref)),
+    onSnapshot: (n, e) => F.onSnapshot(cref, sn => n({ docs: sn.docs.map(d => ({ id:d.id, data:() => d.data() })), metadata: sn.metadata }), err => e && e(fsErr(err))) };
+}
+function lockedView(html){ document.body.classList.add("locked"); $("#who").innerHTML = ""; $("#main").innerHTML = `<section class="panel login">${html}</section>`; }
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const authMsg = x => ({ "auth/invalid-credential":"That email and password don't match. Try again, or use Forgot password.", "auth/wrong-password":"That email and password don't match.", "auth/user-not-found":"No account for that email yet. Use Create your password.", "auth/email-already-in-use":"That email already has a password. Sign in, or use Forgot password.", "auth/weak-password":"Use at least 8 characters for your password.", "auth/invalid-email":"That email address isn't valid.", "auth/too-many-requests":"Too many tries. Wait a few minutes and try again.", "auth/network-request-failed":"No connection. Check your signal and try again." }[x && x.code] || ("Something went wrong: " + (x && (x.code || x.message))));
+function showLogin(mode){
+  mode = mode || "signin";
+  const em = esc(lsGet("tfdLastEmail") || "");
+  const title = { signin:"Sign in", create:"Create your password", reset:"Reset your password" }[mode];
+  const hint = { signin:"Use the email the district chief added for you.", create:"First time here? Use the email the district chief added for you and pick a password of at least 8 characters. We'll email you a link to confirm the address.", reset:"Enter your email and we'll send a link to set a new password." }[mode];
+  lockedView(`<h2>${title}</h2><div class="hint">${hint}</div>
+    <form id="lgForm" class="form" style="grid-template-columns:1fr" novalidate>
+      <label for="lg_e">Email<input id="lg_e" type="email" autocomplete="username" value="${em}"></label>
+      ${mode !== "reset" ? `<label for="lg_p">Password<input id="lg_p" type="password" autocomplete="${mode==="create"?"new-password":"current-password"}"></label>` : ""}
+      ${mode === "create" ? `<label for="lg_p2">Password again<input id="lg_p2" type="password" autocomplete="new-password"></label>` : ""}
+    </form>
+    <div class="err" id="lgErr"></div>
+    <button class="btn pri" id="lg_go">${{ signin:"Sign in", create:"Create password", reset:"Send reset link" }[mode]}</button>
+    <div class="tools">${mode !== "signin" ? `<button class="linkbtn" data-lg="signin">Back to sign in</button>` : `<button class="linkbtn" data-lg="create">First time? Create your password</button><button class="linkbtn" data-lg="reset">Forgot password</button>`}</div>`);
+  document.querySelectorAll("[data-lg]").forEach(b => b.onclick = () => showLogin(b.dataset.lg));
+  const go = async () => {
+    const email = $("#lg_e").value.trim().toLowerCase(), pw = $("#lg_p") ? $("#lg_p").value : "";
+    if (!EMAIL_RE.test(email)){ $("#lgErr").textContent = "Enter your full email address."; return; }
+    if (mode === "create" && pw.length < 8){ $("#lgErr").textContent = "Use at least 8 characters for your password."; return; }
+    if (mode === "create" && pw !== $("#lg_p2").value){ $("#lgErr").textContent = "The two passwords don't match."; return; }
+    if (mode === "signin" && !pw){ $("#lgErr").textContent = "Enter your password."; return; }
+    lsSet("tfdLastEmail", email); $("#lg_go").disabled = true;
+    try {
+      if (mode === "signin") await FB.A.signInWithEmailAndPassword(FB.auth, email, pw);
+      else if (mode === "create"){ const c = await FB.A.createUserWithEmailAndPassword(FB.auth, email, pw); await FB.A.sendEmailVerification(c.user); }
+      else { await FB.A.sendPasswordResetEmail(FB.auth, email); lockedView(`<h2>Check your email</h2><div class="hint">If <b>${esc(email)}</b> has an account, a link to set a new password is on its way. Check your junk folder too.</div><button class="btn pri" onclick="location.reload()">Back to sign in</button>`); }
+    } catch(x){ $("#lg_go").disabled = false; $("#lgErr").textContent = authMsg(x); }
+  };
+  $("#lg_go").onclick = go;
+  $("#lgForm").onsubmit = e => { e.preventDefault(); go(); };
+  $("#lgForm").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); go(); } });
+}
+function showVerify(u){
+  lockedView(`<h2>Confirm your email</h2><div class="hint">We sent a confirmation link to <b>${esc(u.email)}</b>. Open it, then come back and tap <b>I've confirmed</b>. Check your junk folder if you don't see it.</div><div class="err" id="vErr"></div>
+    <div class="tools"><button class="btn pri" id="v_ok">I've confirmed</button><button class="btn" id="v_again">Send it again</button><button class="btn" data-a="signout">Sign out</button></div>`);
+  $("#v_ok").onclick = async () => { await u.reload(); if (FB.auth.currentUser.emailVerified){ await FB.auth.currentUser.getIdToken(true); started = false; startSession(FB.auth.currentUser); } else $("#vErr").textContent = "Not confirmed yet. Open the link in the email first."; };
+  $("#v_again").onclick = async () => { try { await FB.A.sendEmailVerification(u); $("#vErr").textContent = "Sent. Check your email."; } catch(x){ $("#vErr").textContent = authMsg(x); } };
+}
+let started = false;
+async function startSession(u){
+  if (started) return;
+  if (!u.emailVerified){ showVerify(u); return; }
+  started = true;
+  const email = (u.email || "").toLowerCase();
+  let acc = null;
+  try { const sn = await FB.fs.getDoc(FB.fs.doc(FB.db, "access", email)); acc = sn.exists() ? sn.data() : null; } catch(e){ acc = null; }
+  if (!acc){ lockedView(`<h2>Not on the access list</h2><div class="hint">You're signed in as <b>${esc(email)}</b>, but this address hasn't been given access. Ask the district chief to add it, then reload this page.</div><button class="btn" data-a="signout">Sign out</button>`); return; }
+  me = { email, role: acc.role || "viewer" };
+  canWrite = me.role === "editor" || me.role === "admin"; isAdmin = me.role === "admin";
+  document.body.classList.toggle("ro", !canWrite);
+  document.body.classList.remove("locked");
+  $("#who").innerHTML = `${esc(acc.name || email)} · ${esc(ROLE_LABEL[me.role] || me.role)}<button data-a="signout">Sign out</button>`;
+  db = { collection: wrapColl, doc: path => wrapDoc(FB.fs.doc(FB.db, path)) };
+  route();
+  const timer = setTimeout(() => { loadNote = "The district data can't be reached yet. Check your connection; this page will fill in when it connects."; render(); }, 10000);
+  const done = k => { loaded.add(k); if (loaded.size >= COLLS.length + 1){ clearTimeout(timer); loadNote = ""; } };
+  let pending = false; const later = () => { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; render(); }); };
+  const fail = k => e => { done(k); loadNote = "Some data couldn't be loaded. Reload the page; if it keeps happening, ask the district chief to check your access."; later(); };
+  let firstSet = true;
+  db.doc("config/settings").onSnapshot(s => { state.settings = s.exists ? s.data() : null; if (firstSet && s.exists){ firstSet = false; staffDate = homeDate(); vacSel = homeDate(); } if (!s.metadata.fromCache) done("settings"); later(); }, fail("settings"));
+  db.doc("config/vacbook").onSnapshot(s => { state.vacbook = s.exists ? s.data() : null; later(); }, () => {});
+  COLLS.forEach(c => db.collection(c).onSnapshot(s => { state[c] = s.docs.map(d => ({ id:d.id, ...d.data() })); if (!s.metadata.fromCache) done(c); later(); }, fail(c)));
+  if (isAdmin){
+    db.collection("access").onSnapshot(s => { state.access = s.docs.map(d => ({ id:d.id, ...d.data() })); later(); }, () => {});
+  }
+}
+(async () => {
+  const cfg = window.FIREBASE_CONFIG;
+  if (!cfg || !cfg.apiKey || /PASTE/.test(cfg.apiKey)){ lockedView(`<h2>Almost ready</h2><div class="hint">This app isn't connected to its database yet. Open <b>config.js</b> and paste in the Firebase settings, as described in SETUP.md.</div>`); return; }
+  try {
+    const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
+    const [appM, authM, fsM] = await Promise.all([import(base + "firebase-app.js"), import(base + "firebase-auth.js"), import(base + "firebase-firestore.js")]);
+    const app = appM.initializeApp(cfg);
+    FB = { app, A: authM, fs: fsM, auth: authM.getAuth(app), db: fsM.getFirestore(app) };
+  } catch(e){ lockedView(`<h2>Can't connect</h2><div class="hint">The sign-in service didn't load. Check your connection and reload the page.</div>`); return; }
+  FB.A.onAuthStateChanged(FB.auth, u => { if (u) startSession(u); else showLogin("signin"); });
+})();
+</script>
+<script src="roster.js?v=2"></script>
+<script src="weather.js?v=2"></script>
+</body>
+</html>
