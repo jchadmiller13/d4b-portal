@@ -575,10 +575,16 @@ function offGroups(d, sf){
   const csOff = sf.rows.filter(r => r.status === "City Shift Group off");
   const other = sf.rows.filter(r => (!r.on && r.status !== "City Shift Group off" && !oc.appr.concat(oc.extra).some(v => v.name === r.name)) || r.inbound || r.moved);
   const vac = oc.appr.filter(v => byName(v.name).name || true);
-  let h = grp(`Vacation`, `${oc.used} of ${+S().maxOff || "–"}`, vac.length ? vac.map((v,i) => item(v.name, `Slot ${oc.slot.get(v)}`, "ok")).join("") : empty("Nobody on vacation."));
-  if (oc.extra.length) h += grp(`Also off · outside slots`, oc.extra.length, oc.extra.map(v => item(v.name, v.outsideSlots === "Yes" ? "Other district" : "Extra", "info")).join(""));
-  h += grp(`Alternates · working`, oc.alt.length, oc.alt.length ? oc.alt.map((v,i) => item(v.name, `Alternate ${i+1}`, "warn")).join("") : empty("No alternates."));
-  h += grp(`City Shift Group ${sf.kg ?? "–"} off`, csOff.length, csOff.length ? csOff.map(r => item(r.name, "City Shift Group", "")).join("") : empty(sf.kg ? "No members in this group." : "No City Shift Group off this day."));
+  /* bordered box with a bold heading (Vacation, City Shift Group, each Other changes type) */
+  const box = (title, count, body) => `<div class="ocg"><div class="ocg-h"><span>${title}</span><span class="hint">${count}</span></div><div class="list">${body}</div></div>`;
+  const sublabel = t => `<div class="hint" style="font-weight:600;padding-top:6px">${t}</div>`;
+  const half = v => (v.type || "Vacation") === "Vacation" && (v.portion === "Day" || v.portion === "Night") ? " · " + v.portion : "";
+  /* all vacation in one box: slots, then outside the slots, then alternates who are working */
+  let vb = vac.map(v => item(v.name, `Slot ${oc.slot.get(v)}${half(v)}`, "ok")).join("");
+  if (oc.extra.length) vb += sublabel("Outside the slots") + oc.extra.map(v => item(v.name, (v.outsideSlots === "Yes" ? "Other district" : "Extra") + half(v), "info")).join("");
+  if (oc.alt.length) vb += sublabel("Alternates · working") + oc.alt.map((v,i) => item(v.name, `Alternate ${i+1}${half(v)}`, "warn")).join("");
+  let h = box("Vacation", `${oc.used} of ${+S().maxOff || "–"} slots`, vb || empty("Nobody on vacation."));
+  h += box(`City Shift Group ${sf.kg ?? "–"} off`, csOff.length, csOff.length ? csOff.map(r => item(r.name, "City Shift Group", "")).join("") : empty(sf.kg ? "No members in this group." : "No City Shift Group off this day."));
   /* Other changes, grouped by type: off first, then coverage in, then moves */
   if (other.length){
     const ORDER = ["Sick","Injury","Other leave","Admin Duty","Authorized Leave","Detail out","Trade out","Overtime","Detail in","Trade in","Temporary move"];
@@ -586,7 +592,7 @@ function offGroups(d, sf){
     other.forEach(r => { const k = key(r); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
     const rank = k => { const i = ORDER.indexOf(k); return i < 0 ? 99 : i; };
     const keys = [...groups.keys()].sort((x,y) => rank(x) - rank(y) || x.localeCompare(y));
-    h += grp(`Other changes`, other.length, keys.map(k => `<div class="ocg"><div class="ocg-h"><span>${esc(k)}</span><span class="hint">${groups.get(k).length}</span></div><div class="list">` + groups.get(k).map(r => item(r.name, r.moved && r.on ? `Moved ${r.moved} → ${r.station}` : r.status, r.on ? "info" : "warn")).join("") + `</div></div>`).join(""));
+    h += grp(`Other changes`, other.length, keys.map(k => box(esc(k), groups.get(k).length, groups.get(k).map(r => item(r.name, r.moved && r.on ? `Moved ${r.moved} → ${r.station}` : r.status, r.on ? "info" : "warn")).join(""))).join(""));
   }
   return h;
 }
