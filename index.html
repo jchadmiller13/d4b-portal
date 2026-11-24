@@ -82,6 +82,10 @@ body.locked nav,body.locked #bmeta{display:none}
 .g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
 .g3{grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
 .tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+/* Dashboard top: three tiles and three panels, all the same size, three across */
+.six{display:grid;gap:16px;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr}
+.six>.tile,.six>.panel{min-width:0;height:100%}
+@media (max-width:900px){.six{grid-template-columns:1fr;grid-auto-rows:auto}}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .panel .ph{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .panel .ph a{font-size:13px;color:var(--info)}
@@ -533,13 +537,10 @@ function vDashboard(){
   const pend = state.vacations.filter(v => v.status === "Requested").length;
   return `${banners()}
   <div class="head"><h2>${t === today() ? "" : "Next shift · "}${dowOf(t)}, ${fmt(t)} · ${esc(sf.shift)} Platoon${sf.kg ? ` · City Shift Group ${sf.kg} off` : ""}</h2></div>
-  <div class="tiles">
+  <div class="six">
     <div class="tile ${shortSt.length?"crit":"ok"}"><div class="k">On duty</div><div class="v">${sf.onDuty}<span style="font-size:20px;color:var(--muted)"> / ${sf.minTotal}</span></div><div class="s">${shortSt.length ? `${shortSt.length} compan${shortSt.length>1?"ies":"y"} below minimum` : "All companies at or above minimum"}</div></div>
     <div class="tile info"><div class="k">Off ${t === today() ? "today" : "this shift"}</div><div class="v">${off.length}</div><div class="s">${sf.rows.filter(r=>r.alt).length} vacation alternates working · ${sf.rows.filter(r=>r.inbound).length} coverage in</div></div>
-    <div class="tile info"><div class="k">Training ${t === today() ? "today" : "this shift"}</div><div class="v">${tr.length}</div><div class="s">${tr.reduce((a,x)=>a+(+x.hours||0),0)} scheduled hours</div></div>
     ${window.wxTile ? wxTile(t) : `<div class="tile ${overdue?"crit":reps.length?"warn":"ok"}"><div class="k">Reports overdue</div><div class="v">${overdue}</div><div class="s">${reps.length-overdue} due within 7 days</div></div>`}
-  </div>
-  <div class="grid g3">
     <section class="panel"><div class="ph"><h3>Training this shift</h3><a href="#training">All training</a></div>
       <div class="list">${tr.length ? tr.map(x=>`<div class="li"><div><div class="t">${esc(x.title)}</div><div class="d">${esc([x.time,x.location,x.audience].filter(Boolean).join(" · "))}</div></div>${pill(x.status, x.status==="Completed"?"ok":"info")}</div>`).join("") : empty("No training scheduled this shift.")}</div></section>
     <section class="panel"><div class="ph"><h3>Reports due</h3><a href="#reports">All reports</a></div>
