@@ -290,7 +290,7 @@ function staffFor(d){
   if (kg) state.personnel.filter(p => p.shift === sh && String(p.csGroup) === String(kg)).forEach(p => off.set(p.name, { why:"City Shift Group off", src:"kelly" }));
   const lo = leaveOrder(d), altOf = new Map();
   lo.alt.forEach((v,i) => altOf.set(v.name, i+1));
-  lo.off.concat(lo.extra, lo.flex).forEach(v => off.set(v.name, { why: v.type || "Vacation", src:"vac" }));
+  lo.off.concat(lo.extra, lo.flex, lo.other).forEach(v => off.set(v.name, { why: v.type || "Vacation", src:"vac" }));
   const ex = state.staffing.filter(x => x.date === d);
   ex.filter(x => KINDS[x.kind] < 0).forEach(x => off.set(x.name, { why: x.kind, src:"ex", id:x.id }));
   const rows = [];
@@ -322,12 +322,15 @@ function leaveOrder(d){
   const exempt = v => v.outsideSlots === "Yes" || (person(v.name) || {}).slotExempt === "Yes";
   /* approved City Shift Group flex: off the line-up, but not in a vacation slot */
   const isFlex = v => v.type === "City Shift Group flex";
-  const flex = list.filter(isFlex), rest = list.filter(v => !isFlex(v));
+  /* Admin Duty and Authorized Leave: off their company, listed under Other changes, never in a vacation slot */
+  const isOther = v => NON_SLOT.includes(v.type);
+  const flex = list.filter(isFlex), other = list.filter(isOther), rest = list.filter(v => !isFlex(v) && !isOther(v));
   const extra = rest.filter(exempt), slotted = rest.filter(v => !exempt(v));
   const max = +S().maxOff || slotted.length;
-  return { off: slotted.slice(0, max), extra, flex, alt: slotted.slice(max), req: state.vacations.filter(v => v.status === "Requested" && cover(v)) };
+  return { off: slotted.slice(0, max), extra, flex, other, alt: slotted.slice(max), req: state.vacations.filter(v => v.status === "Requested" && cover(v)) };
 }
-function offCount(d){ const o = leaveOrder(d); return { appr:o.off, extra:o.extra, flex:o.flex, alt:o.alt, req:o.req }; }
+const NON_SLOT = ["Admin Duty","Authorized Leave"];
+function offCount(d){ const o = leaveOrder(d); return { appr:o.off, extra:o.extra, flex:o.flex, other:o.other, alt:o.alt, req:o.req }; }
 
 function repState(r){
   if (r.frequency === "One-time" && r.status === "Submitted") return ["Submitted","ok"];
@@ -598,10 +601,11 @@ function vVacation(){
     <div class="year">${months}</div></section>
   <section class="panel"><div class="ph"><h3>${dowOf(vacSel)}, ${fmt(vacSel)} · ${esc(shiftOn(vacSel))} Platoon</h3>${pill(`${oc.appr.length} of ${maxOff||"–"} slots${oc.alt.length?` · ${oc.alt.length} alternate${oc.alt.length>1?"s":""}`:""}`, maxOff && oc.appr.length>=maxOff ? "crit" : "")}</div>
     ${kellyGroup(vacSel) ? `<div class="hint"><b>City Shift Group ${kellyGroup(vacSel)} off:</b> ${esc(state.personnel.filter(p => String(p.csGroup) === String(kellyGroup(vacSel))).map(p => p.name).join(", ") || "no members in this group")}</div>` : ""}
-    <div class="list">${oc.appr.length + oc.extra.length + oc.flex.length + oc.alt.length + oc.req.length ? [
+    <div class="list">${oc.appr.length + oc.extra.length + oc.flex.length + oc.other.length + oc.alt.length + oc.req.length ? [
       ...oc.appr.map((v,i) => [v, pill(`Slot ${i+1} · Off`,"ok")]),
       ...oc.extra.map(v => [v, pill(v.outsideSlots === "Yes" ? "Off · other district" : "Off · outside slots","info")]),
       ...oc.flex.map(v => [v, pill("Off · City Shift Group flex","info")]),
+      ...oc.other.map(v => [v, pill("Off · "+v.type,"info")]),
       ...oc.alt.map((v,i) => [v, pill(`Alternate ${i+1} · Working`,"warn")]),
       ...oc.req.map(v => [v, pill("Requested","info")])
     ].map(([v,tag])=>`<div class="li"><div><div class="t">${esc(v.name)}</div><div class="d">${esc(v.type||"Vacation")} · ${range(v.start,v.end)}</div></div><div class="tools">${tag}${cancelBtn(v,vacSel)}${editBtn("vacations",v.id)}</div></div>`).join("") : empty("Nobody is on vacation this day.")}</div>
@@ -691,6 +695,7 @@ function openDay(d){
     </div>
     <section><h3>Vacation slots</h3><div class="list">${oc.appr.length ? oc.appr.map((v,i)=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill(`Slot ${i+1}`,"ok"), "vacations", v.id, cancelBtn(v,d))).join("") : empty("Nobody on vacation.")}</div></section>
     ${oc.extra.length ? `<section><h3>Also off · outside the ${maxOff} slots</h3><div class="list">${oc.extra.map(v=>row(v.name, esc((v.type||"Vacation")+" · "+range(v.start,v.end)), pill(v.outsideSlots === "Yes" ? "Other district" : "Extra","info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
+    ${oc.other.length ? `<section><h3>Off · Admin Duty / Authorized Leave</h3><div class="list">${oc.other.map(v=>row(v.name, esc(range(v.start,v.end)), pill(v.type,"info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
     ${oc.flex.length ? `<section><h3>Off · City Shift Group flex</h3><div class="list">${oc.flex.map(v=>row(v.name, esc(range(v.start,v.end)), pill("City Shift Group flex","info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
     ${oc.alt.length ? `<section><h3>Alternates (working)</h3><div class="list">${oc.alt.map((v,i)=>row(v.name, esc(range(v.start,v.end)), pill(`Alternate ${i+1}`,"warn"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
     ${oc.req.length ? `<section><h3>Pending requests</h3><div class="list">${oc.req.map(v=>row(v.name, esc(range(v.start,v.end)), pill("Requested","info"), "vacations", v.id)).join("")}</div></section>` : ""}
