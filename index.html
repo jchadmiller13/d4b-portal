@@ -375,7 +375,7 @@ const F = {
     ["station","Covering company (for OT, detail or trade in)","select",{opts:()=>["",...stationNames()],full:1}],
     ["unit","Unit","text"], ["position","Riding position","text"], ["note","Note","textarea"] ]},
   vacations:{ title:"Leave request", fields:[
-    ["name","Member","select",{opts:()=>["",...names()],req:1}], ["type","Leave type","select",{opts:["Vacation","Day exchange","City Shift Group flex","Holiday","Comp time","Personal","FMLA","Military","Bereavement"]}],
+    ["name","Member","select",{opts:()=>["",...names()],req:1}], ["type","Leave type","select",{opts:["Vacation","Day exchange","City Shift Group flex","Holiday","Comp time","Personal","FMLA","Military","Bereavement","Admin Duty","Authorized Leave"]}],
     ["start","First day","date",{req:1}], ["end","Last day","date"],
     ["outsideSlots","Outside the daily vacation slots (scheduled in another district)","select",{opts:["No","Yes"],full:1}],
     ["status","Status","select",{opts:()=>isAdmin?["Requested","Approved","Denied"]:[]}], ["note","Note","textarea"] ]},
