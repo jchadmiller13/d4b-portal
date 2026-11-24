@@ -572,8 +572,10 @@ function offGroups(d, sf){
   const sub = n => { const r = byName(n); return esc([r.rank, r.unit || r.station].filter(Boolean).join(" · ")); };
   const item = (n, tag, c) => `<div class="li"><div><div class="t">${esc(n)}</div><div class="d">${sub(n)}</div></div>${pill(tag, c)}</div>`;
   const grp = (title, count, body) => `<div class="fhead" style="margin-top:4px;display:flex;justify-content:space-between"><span>${title}</span><span class="hint">${count}</span></div><div class="list">${body}</div>`;
-  const csOff = sf.rows.filter(r => r.status === "City Shift Group off");
-  const other = sf.rows.filter(r => (!r.on && r.status !== "City Shift Group off" && !oc.appr.concat(oc.extra).some(v => v.name === r.name)) || r.inbound || r.moved);
+  /* City Shift Group box: the group that is off, plus anyone on approved City Shift Group flex */
+  const isCS = r => r.status === "City Shift Group off" || r.status === "City Shift Group flex";
+  const csOff = sf.rows.filter(isCS);
+  const other = sf.rows.filter(r => (!r.on && !isCS(r) && !oc.appr.concat(oc.extra).some(v => v.name === r.name)) || r.inbound || r.moved);
   const vac = oc.appr.filter(v => byName(v.name).name || true);
   /* bordered box with a bold heading (Vacation, City Shift Group, each Other changes type) */
   const box = (title, count, body) => `<div class="ocg"><div class="ocg-h"><span>${title}</span><span class="hint">${count}</span></div><div class="list">${body}</div></div>`;
@@ -584,7 +586,7 @@ function offGroups(d, sf){
   if (oc.extra.length) vb += sublabel("Outside the slots") + oc.extra.map(v => item(v.name, (v.outsideSlots === "Yes" ? "Other district" : "Extra") + half(v), "info")).join("");
   if (oc.alt.length) vb += sublabel("Alternates · working") + oc.alt.map((v,i) => item(v.name, `Alternate ${i+1}${half(v)}`, "warn")).join("");
   let h = box("Vacation", `${oc.used} of ${+S().maxOff || "–"} slots`, vb || empty("Nobody on vacation."));
-  h += box(`City Shift Group ${sf.kg ?? "–"} off`, csOff.length, csOff.length ? csOff.map(r => item(r.name, "City Shift Group", "")).join("") : empty(sf.kg ? "No members in this group." : "No City Shift Group off this day."));
+  h += box(`City Shift Group ${sf.kg ?? "–"} off`, csOff.length, csOff.length ? csOff.map(r => r.status === "City Shift Group flex" ? item(r.name, "Flex", "info") : item(r.name, "City Shift Group", "")).join("") : empty(sf.kg ? "No members in this group." : "No City Shift Group off this day."));
   /* Other changes, grouped by type: off first, then coverage in, then moves */
   if (other.length){
     const ORDER = ["Sick","Injury","Other leave","Admin Duty","Authorized Leave","Detail out","Trade out","Overtime","Detail in","Trade in","Temporary move"];
