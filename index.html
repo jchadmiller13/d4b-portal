@@ -512,6 +512,9 @@ function banners(){
 const unitOf = co => (state.personnel.find(p => p.station === co) || {}).unit || "";
 /* true when the member's EMS licensure on the Roster is Paramedic */
 const isMedic = n => /paramedic/i.test((person(n) || {}).licensure || "");
+/* ALS companies are marked in Setup (Name | minimum | ALS). Until Setup is saved with that, these three are ALS */
+const DEFAULT_ALS = ["Engine 17","Engine 19","Engine 24"];
+const isALS = s => s.als !== undefined ? !!s.als : !S().stations.some(x => x.als !== undefined) && DEFAULT_ALS.includes(s.name);
 /* company designators (E03, L24, C644...) in Setup order, for the assignment dropdown */
 const coDesig = () => [...new Set(stationNames().map(n => unitOf(n) || n))].filter(Boolean);
 /* statusByName: show only the Staffed / At minimum / Short tag, right beside the company name (Daily Staffing tab) */
@@ -520,7 +523,10 @@ function stationMeters(sf, withMembers, dragDate, statusByName){
   return sf.stations.map(s => {
     const min = +s.min || 0, max = Math.max(min + 2, s.on, 1), short = s.on < min;
     const tag = short?pill(`Short ${min-s.on}`,"crit"):s.on===min?pill("At minimum","warn"):pill("Staffed","ok");
-    const head = statusByName ? `<div class="row lead"><b>${esc(s.name)}</b>${tag}</div>` : `<div class="row"><b>${esc(s.name)}</b><span>${s.on} on duty · min ${min} ${tag}</span></div>`;
+    /* ALS companies need a paramedic on duty every shift */
+    const medics = s.rows.filter(r => r.on && isMedic(r.name)).length;
+    const als = isALS(s) ? (medics ? pill("ALS · paramedic on","ok") : pill("ALS · no paramedic","crit")) : "";
+    const head = statusByName ? `<div class="row lead"><b>${esc(s.name)}</b>${tag}${als}</div>` : `<div class="row"><b>${esc(s.name)}</b><span>${s.on} on duty · min ${min} ${tag} ${als}</span></div>`;
     return `<div class="st"${dragDate ? ` data-drop="${esc(s.name)}"` : ""}>${head}
       ${statusByName ? "" : `<div class="meter" aria-hidden="true"><div class="f${short?" crit":""}" style="width:${Math.min(100,s.on/max*100)}%"></div>${min?`<div class="min" style="left:${min/max*100}%"></div>`:""}</div>`}${withMembers ? `<div class="crew">${s.rows.filter(r=>r.on).map(r=>`<span class="mem${r.inbound?" in":r.alt?" alt":""}${r.moved?" mv":""}${isMedic(r.name)?" medic":""}${r.rank==="FD-03"?" r3":r.rank==="FD-02"?" r2":r.rank==="FD-01"?" r1":r.rank==="FD-05"?" r5":""}" title="${esc(r.name)}${r.rank?" · "+esc(r.rank):""}${isMedic(r.name)?" · Paramedic":""}"${dragDate && !r.inbound ? ` data-drag="${esc(r.name)}" data-from="${esc(r.station)}" tabindex="0" role="button" aria-label="Move ${esc(r.name)}"` : ""}>${(()=>{ const x = [r.moved?"from "+esc(r.moved):"", (r.inbound||r.alt)?esc(r.status):""].filter(Boolean).join(" · "); return `<b>${esc(r.name)}</b>${x?` <small>${x}</small>`:""}`; })()}</span>`).join("") || `<span class="hint">Nobody on duty</span>`}</div>` : ""}</div>`;
   }).join("");
@@ -899,7 +905,7 @@ function vSetup(){
       <label for="s_rt">PAT every (months)<input id="s_rt" type="number" min="1" value="${esc(s.reqMonths.pat)}"></label>
       <label for="s_rh">HazMat Ops every (months)<input id="s_rh" type="number" min="1" value="${esc(s.reqMonths.hazmat)}"></label>
       <label for="s_re">EMS refresher every (months)<input id="s_re" type="number" min="1" value="${esc(s.reqMonths.refresher)}"></label>
-      <label class="full" for="s_st">Companies and minimum staffing, one per line as Name | minimum<textarea id="s_st" rows="9" placeholder="Engine 3 | 3">${esc(s.stations.map(x=>`${x.name} | ${x.min}`).join("\n"))}</textarea></label>
+      <label class="full" for="s_st">Companies and minimum staffing, one per line as Name | minimum. Add | ALS for a company that must have a paramedic each shift<textarea id="s_st" rows="9" placeholder="Engine 17 | 4 | ALS">${esc(s.stations.map(x=>`${x.name} | ${x.min}${isALS(x) ? " | ALS" : ""}`).join("\n"))}</textarea></label>
     </form>
     <div class="hint">The shift calendar assumes a 24-on / 48-off rotation: each day goes to the next shift in the list. Today works out to ${esc(shiftOn(today()))} shift${s.kelly ? `; the next ${esc(s.homeShift||"")} platoon day has City Shift Group ${kellyGroup(homeDate()) ?? "–"} off` : ""}.</div>
     <div class="err" id="serr"></div>
@@ -989,7 +995,7 @@ async function quick(coll, id, upd, msg){
   try { if (!db) throw 0; await db.collection(coll).doc(id).update(upd); toast(msg); } catch(e){ toast(writeErr(e)); }
 }
 async function saveSettings(){
-  const stations = $("#s_st").value.split("\n").map(l => l.trim()).filter(Boolean).map(l => { const [n,m] = l.split("|"); return { name:n.trim(), min: Math.max(0, parseInt(m)||0) }; });
+  const stations = $("#s_st").value.split("\n").map(l => l.trim()).filter(Boolean).map(l => { const [n,m,f] = l.split("|"); return { name:n.trim(), min: Math.max(0, parseInt(m)||0), als: /als/i.test(f||"") }; });
   const sh = $("#s_sh").value.split(",").map(x => x.trim()).filter(Boolean);
   const ka = $("#s_ka").value, kg = parseInt($("#s_kg").value), kn = parseInt($("#s_kn").value);
   const kelly = isDate(ka) && kg && kn ? { anchor:ka, start:kg, groups:kn } : null;
