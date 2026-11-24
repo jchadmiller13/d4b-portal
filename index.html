@@ -371,7 +371,7 @@ const F = {
     ["hours","Hours","number"], ["location","Location","text"], ["instructor","Instructor","text"],
     ["audience","Who attends","text",{ph:"B shift, all companies"}], ["status","Status","select",{opts:["Scheduled","Completed","Cancelled"]}], ["notes","Notes","textarea"] ]},
   assignments:{ title:"Special assignment", fields:[
-    ["name","Member","select",{opts:()=>["",...names()],req:1}], ["type","Type","select",{opts:["Detail","Acting rank","Light duty","Committee","Special operations","Instructor","Other"]}],
+    ["name","Member","select",{opts:()=>["",...names(),...coDesig()],req:1}], ["type","Type","select",{opts:["Detail","Acting rank","Light duty","Committee","Special operations","Instructor","Other"]}],
     ["assignment","Assignment","text",{req:1,full:1}], ["start","Start","date",{req:1}], ["end","End","date"], ["notes","Notes","textarea"] ]},
   reports:{ title:"Reporting requirement", fields:[
     ["title","Report","text",{req:1,full:1}], ["frequency","Frequency","select",{opts:["Daily","Weekly","Monthly","Quarterly","Annual","One-time"]}],
@@ -465,6 +465,8 @@ function banners(){
 }
 
 const unitOf = co => (state.personnel.find(p => p.station === co) || {}).unit || "";
+/* company designators (E03, L24, C644...) in Setup order, for the assignment dropdown */
+const coDesig = () => [...new Set(stationNames().map(n => unitOf(n) || n))].filter(Boolean);
 /* statusByName: show only the Staffed / At minimum / Short tag, right beside the company name (Daily Staffing tab) */
 function stationMeters(sf, withMembers, dragDate, statusByName){
   if (!sf.stations.length) return empty("No companies set up.");
