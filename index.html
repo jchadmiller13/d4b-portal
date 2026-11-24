@@ -574,7 +574,15 @@ function offGroups(d, sf){
   if (oc.extra.length) h += grp(`Also off · outside slots`, oc.extra.length, oc.extra.map(v => item(v.name, v.outsideSlots === "Yes" ? "Other district" : "Extra", "info")).join(""));
   h += grp(`Alternates · working`, oc.alt.length, oc.alt.length ? oc.alt.map((v,i) => item(v.name, `Alternate ${i+1}`, "warn")).join("") : empty("No alternates."));
   h += grp(`City Shift Group ${sf.kg ?? "–"} off`, csOff.length, csOff.length ? csOff.map(r => item(r.name, "City Shift Group", "")).join("") : empty(sf.kg ? "No members in this group." : "No City Shift Group off this day."));
-  if (other.length) h += grp(`Other changes`, other.length, other.map(r => item(r.name, r.moved && r.on ? `Moved ${r.moved} → ${r.station}` : r.status, r.on ? "info" : "warn")).join(""));
+  /* Other changes, grouped by type: off first, then coverage in, then moves */
+  if (other.length){
+    const ORDER = ["Sick","Injury","Other leave","Admin Duty","Authorized Leave","Detail out","Trade out","Overtime","Detail in","Trade in","Temporary move"];
+    const key = r => r.moved && r.on ? "Temporary move" : r.status, groups = new Map();
+    other.forEach(r => { const k = key(r); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+    const rank = k => { const i = ORDER.indexOf(k); return i < 0 ? 99 : i; };
+    const keys = [...groups.keys()].sort((x,y) => rank(x) - rank(y) || x.localeCompare(y));
+    h += grp(`Other changes`, other.length, keys.map(k => `<div class="hint" style="font-weight:600;padding-top:6px">${esc(k)} · ${groups.get(k).length}</div>` + groups.get(k).map(r => item(r.name, r.moved && r.on ? `Moved ${r.moved} → ${r.station}` : r.status, r.on ? "info" : "warn")).join("")).join(""));
+  }
   return h;
 }
 function vStaffing(){
