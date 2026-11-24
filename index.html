@@ -540,7 +540,10 @@ function vDashboard(){
     ${window.wxTile ? wxTile(t) : `<div class="tile ${overdue?"crit":reps.length?"warn":"ok"}"><div class="k">Reports overdue</div><div class="v">${overdue}</div><div class="s">${reps.length-overdue} due within 7 days</div></div>`}
   </div>
   <div class="grid g2">
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
     <section class="panel"><div class="ph"><h3>Staffing by company</h3><a href="#staffing">Full roster</a></div><div class="hint">Yellow = FD-05, red = FD-03, green = FD-02, black = FD-01. Blue outline = coverage in; gold outline = vacation alternate. <b style="color:#1e90ff">Bright blue name</b> = paramedic.</div>${stationMeters(sf, true)}</section>
+      <section class="panel"><div class="ph"><h3>Member requirements</h3><a href="#requirements">All requirements</a></div>${dashReq()}</section>
+    </div>
     <section class="panel"><div class="ph"><h3>Off and coverage</h3><a href="#staffing">Details</a></div>
       ${offGroups(t, sf)}</section>
   </div>
@@ -552,7 +555,6 @@ function vDashboard(){
     <section class="panel"><div class="ph"><h3>Special assignments</h3><a href="#assignments">All</a></div>
       <div class="list">${act.length ? act.map(a=>`<div class="li"><div><div class="t">${esc(a.name)}</div><div class="d">${esc(a.assignment)}${a.end?` · until ${fmtShort(a.end)}`:""}</div></div>${pill(a.type||"Active","info")}</div>`).join("") : empty("No active special assignments.")}</div></section>
   </div>
-  <section class="panel"><div class="ph"><h3>Member requirements</h3><a href="#requirements">All requirements</a></div>${dashReq()}</section>
   <section class="panel"><div class="ph"><h3>Leave starting in the next 14 days</h3><a href="#vacation">Vacation schedule${pend?` · ${pend} pending`:""}</a></div>
     <div class="list">${upV.length ? upV.map(v=>`<div class="li"><div><div class="t">${esc(v.name)} <span class="sh">${esc(v.shift||"")}</span></div><div class="d">${esc(leaveLabel(v))} · ${range(v.start,v.end)}</div></div>${pill("Approved","ok")}</div>`).join("") : empty("No approved leave starts in the next two weeks.")}</div></section>`;
 }
