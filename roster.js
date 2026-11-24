@@ -1,7 +1,7 @@
 /* TFD District 4-B · Upload roster (reads the District 4-B Master Roster workbook) */
 (function(){
 const RU = { changes:null };
-const LABEL = { name:"Name", first:"First name", last:"Last name", rank:"Rank", unit:"Unit", station:"Company", shift:"Shift", csGroup:"City Shift Group", roic:"ROIC #", empId:"Employee #", email:"Email", phone:"Phone", stationNo:"Station #", hireDate:"Hire date", licensure:"Licensure", licYear:"License year", refresher:"EMS refresher", protocol:"Protocol", physical:"Physical", physicalSched:"Physical scheduled", physicalTime:"Physical time", mandatory:"Mandatory", pfa:"PFA", pat:"PAT", ppe:"PPE", hazmat:"HazMat", doTraining:"DO training", q1:"Q1 hours", q2:"Q2 hours", q3:"Q3 hours", q4:"Q4 hours", qNeed:"Hours needed" };
+const LABEL = { name:"Name", first:"First name", last:"Last name", rank:"Rank", unit:"Unit", station:"Company", shift:"Shift", csGroup:"City Shift Group", roic:"ROIC #", empId:"Employee #", email:"Email", phone:"Phone", stationNo:"Station #", hireDate:"Hire date", licensure:"Licensure", licYear:"License year", refresher:"EMS refresher", protocol:"Protocol", physical:"Physical", physicalSched:"Physical scheduled", physicalTime:"Physical time", mandatory:"Mandatory", pfa:"PFA", pat:"PAT", ppe:"PPE", hazmat:"HazMat", doTraining:"DO training", q1:"Q1 hours", q2:"Q2 hours", q3:"Q3 hours", q4:"Q4 hours", qNeed:"Hours needed", t2:"T2 hours", t2Target:"T2 target to date", t2AsOf:"T2 target as of", t2Need:"T2 hours needed" };
 
 function pad(n){ return String(n).padStart(2,"0"); }
 function cv(v){
@@ -35,19 +35,42 @@ function idx(sheets, name, li, fi, ri){
     if (rc && byr[rc]) return byr[rc]; if (bylf[l+"|"+f]) return bylf[l+"|"+f]; if ((byl[l]||[]).length === 1) return byl[l][0]; return null; };
 }
 
+/* T2 - Co Training tab: "Last, First" names, a Company column, "T2 - Total Hour" (hours so far this year),
+   a date heading whose column holds the target to that date, and "Total Needed" for the year. Matched by last name, then company, then first name */
+function t2Index(sheets){
+  const rows = findSheet(sheets, "T2 - Co Training") || [];
+  if (!rows.length) return () => null;
+  const raw = rows[0] || [], head = raw.map(h => h instanceof Date ? "" : String(h ?? "").trim().toLowerCase());
+  const col = re => head.findIndex(h => re.test(h));
+  const cName = col(/^full name/), cT2 = col(/^t2\s*-?\s*total/), cNeed = col(/total needed/), cCo = col(/^company/);
+  const cDate = raw.findIndex(h => h instanceof Date);
+  if (cName < 0 || cT2 < 0) return () => null;
+  const asOf = cDate >= 0 ? cv(raw[cDate]) : "";
+  const list = rows.slice(1).filter(Boolean).map(r => { const nm = cv(r[cName]), i = nm.indexOf(",");
+    return { l: (i < 0 ? nm : nm.slice(0, i)).trim().toLowerCase(), f: (i < 0 ? "" : nm.slice(i + 1)).trim().toLowerCase(), co: cCo >= 0 ? cv(r[cCo]).toUpperCase() : "",
+      t2: num(r[cT2]), need: cNeed >= 0 ? num(r[cNeed]) : null, target: cDate >= 0 ? num(r[cDate]) : null }; })
+    .filter(x => x.l && x.t2 !== null);
+  return (last, first, unit) => {
+    let c = list.filter(x => x.l === last.toLowerCase());
+    if (c.length > 1) c = c.filter(x => x.co === String(unit).toUpperCase());
+    if (c.length > 1) c = c.filter(x => x.f === first.toLowerCase());
+    return c.length === 1 ? { ...c[0], asOf } : null;
+  };
+}
+
 /* sheets: { sheetName: [[cell, cell, ...], ...] } including the heading row. Returns member records (no personal details). */
 function parseRoster(sheets){
   if (!findSheet(sheets, "D4B COs")) throw new Error("This doesn't look like the District 4-B Master Roster: there's no \"D4B COs\" sheet.");
   const cs = {}; for (const r of body(sheets, "D4B CS")) cs[cv(r[0]).toLowerCase()+"|"+cv(r[1]).toLowerCase()] = r;
   const M = idx(sheets,"Master",5,6,7), INFO = idx(sheets,"Info",0,1,2), EMS = idx(sheets,"EMS Refresher",0,1), PHY = idx(sheets,"Physicals ",0,1,2),
-        REC = idx(sheets,"Recordables",0,1,4), T2 = idx(sheets,"T2 - Co Training ",0,1), HIRE = idx(sheets,"Hire Date",0,1,6);
+        REC = idx(sheets,"Recordables",0,1,4), T2 = t2Index(sheets), HIRE = idx(sheets,"Hire Date",0,1,6);
   const out = [];
   for (const r of body(sheets, "D4B COs")){
     const last = cv(r[0]), first = cv(r[1]), unit = cv(r[2]), rank = cv(r[3]);
     if (!last && !first) continue;
     const g = cs[last.toLowerCase()+"|"+first.toLowerCase()];
     const rc = g ? roicOf(g[2]) : "";
-    const m = M(rc,last,first), inf = INFO(rc,last,first), e = EMS(rc,last,first), p = PHY(rc,last,first), rec = REC(rc,last,first), t = T2(rc,last,first), h = HIRE(rc,last,first);
+    const m = M(rc,last,first), inf = INFO(rc,last,first), e = EMS(rc,last,first), p = PHY(rc,last,first), rec = REC(rc,last,first), t = T2(last,first,unit), h = HIRE(rc,last,first);
     const name = m && cv(m[4]) ? cv(m[4]) : `${first} ${last}`.trim();
     let d = { name, first, last, rank, unit, station: company(unit), shift:"B",
       csGroup: g ? cv(g[3]) : "", roic: rc,
@@ -59,7 +82,7 @@ function parseRoster(sheets){
       physical: p ? cv(p[4]) : "", physicalSched: p ? cv(p[6]) : "", physicalTime: p && cv(p[7]) ? cv(p[7]).padStart(4,"0") : "",
       mandatory: rec ? cv(rec[7]) : "", pfa: rec ? cv(rec[8]) : "", pat: rec ? cv(rec[9]) : "", ppe: rec ? cv(rec[10]) : "",
       hazmat: rec ? cv(rec[11]) : "", doTraining: rec ? cv(rec[17]) : "" };
-    if (t){ [["q1",4],["q2",7],["q3",10],["q4",13]].forEach(([q,ix]) => { const n = num(t[ix]); d[q] = n === null ? 0 : n; }); d.qNeed = num(t[5]) || 48; }
+    if (t){ d.t2 = t.t2; d.t2Need = t.need || 192; if (t.target !== null) d.t2Target = t.target; if (t.asOf) d.t2AsOf = t.asOf; }
     d = Object.fromEntries(Object.entries(d).filter(([k,v]) => v !== ""));
     out.push(d);
   }
