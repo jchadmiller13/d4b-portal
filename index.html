@@ -371,7 +371,7 @@ const F = {
     ["hours","Hours","number"], ["location","Location","text"], ["instructor","Instructor","text"],
     ["audience","Who attends","text",{ph:"B shift, all companies"}], ["status","Status","select",{opts:["Scheduled","Completed","Cancelled"]}], ["notes","Notes","textarea"] ]},
   assignments:{ title:"Special assignment", fields:[
-    ["name","Member / Company","select",{opts:()=>["",...names(),...coDesig()],req:1}], ["type","Type","select",{opts:["Detail","Acting rank","Light duty","Committee","Special operations","Instructor","Other"]}],
+    ["name","Member / Company","select",{opts:()=>["",...names(),...coDesig()],req:1}], ["type","Type","select",{opts:["Detail","Acting rank","Light duty","Committee","Special operations","Instructor","Community Contact","Other"]}],
     ["assignment","Assignment","text",{req:1,full:1}], ["start","Start","date",{req:1}], ["end","End","date"], ["notes","Notes","textarea"] ]},
   reports:{ title:"Reporting requirement", fields:[
     ["title","Report","text",{req:1,full:1}], ["frequency","Frequency","select",{opts:["Daily","Weekly","Monthly","Quarterly","Annual","One-time"]}],
