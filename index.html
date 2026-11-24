@@ -326,15 +326,25 @@ function leaveOrder(d){
   const isOther = v => NON_SLOT.includes(v.type);
   const flex = list.filter(isFlex), other = list.filter(isOther), rest = list.filter(v => !isFlex(v) && !isOther(v));
   const extra = rest.filter(exempt), slotted = rest.filter(v => !exempt(v));
-  const max = +S().maxOff || slotted.length;
-  return { off: slotted.slice(0, max), extra, flex, other, alt: slotted.slice(max), req: state.vacations.filter(v => v.status === "Requested" && cover(v)) };
+  /* vacation slots: a Full vacation takes a whole slot; a Day and a Night share one. Up to maxOff people off on days and up to maxOff on nights */
+  const max = +S().maxOff || Infinity, off = [], alt = [], slot = new Map(), dayOpen = [], nightOpen = [];
+  let used = 0;
+  for (const v of slotted){
+    const p = (v.type || "Vacation") === "Vacation" ? v.portion : "", needD = p !== "Night", needN = p !== "Day";
+    if (needD && needN){ if (used < max){ slot.set(v, ++used); off.push(v); } else alt.push(v); continue; }
+    const open = needD ? dayOpen : nightOpen, pair = needD ? nightOpen : dayOpen;
+    if (open.length){ slot.set(v, open.shift()); off.push(v); }
+    else if (used < max){ slot.set(v, ++used); pair.push(used); off.push(v); }
+    else alt.push(v);
+  }
+  return { off, used, slot, extra, flex, other, alt, req: state.vacations.filter(v => v.status === "Requested" && cover(v)) };
 }
 const NON_SLOT = ["Admin Duty","Authorized Leave"];
 /* leave type for display, with Day or Night added to a part-shift vacation */
 const leaveLabel = v => { const t = v.type || "Vacation"; return t === "Vacation" && (v.portion === "Day" || v.portion === "Night") ? `${t} (${v.portion})` : t; };
 /* the Day / Night / Full choice only shows when the leave type is Vacation */
 function syncPortion(){ const t = $("#f_type"), p = $("#f_portion"); if (!t || !p) return; p.closest("label").style.display = t.value === "Vacation" ? "" : "none"; }
-function offCount(d){ const o = leaveOrder(d); return { appr:o.off, extra:o.extra, flex:o.flex, other:o.other, alt:o.alt, req:o.req }; }
+function offCount(d){ const o = leaveOrder(d); return { appr:o.off, used:o.used, slot:o.slot, extra:o.extra, flex:o.flex, other:o.other, alt:o.alt, req:o.req }; }
 
 function repState(r){
   if (r.frequency === "One-time" && r.status === "Submitted") return ["Submitted","ok"];
@@ -557,7 +567,7 @@ function offGroups(d, sf){
   const csOff = sf.rows.filter(r => r.status === "City Shift Group off");
   const other = sf.rows.filter(r => (!r.on && r.status !== "City Shift Group off" && !oc.appr.concat(oc.extra).some(v => v.name === r.name)) || r.inbound || r.moved);
   const vac = oc.appr.filter(v => byName(v.name).name || true);
-  let h = grp(`Vacation`, `${vac.length} of ${+S().maxOff || "–"}`, vac.length ? vac.map((v,i) => item(v.name, `Slot ${i+1}`, "ok")).join("") : empty("Nobody on vacation."));
+  let h = grp(`Vacation`, `${oc.used} of ${+S().maxOff || "–"}`, vac.length ? vac.map((v,i) => item(v.name, `Slot ${oc.slot.get(v)}`, "ok")).join("") : empty("Nobody on vacation."));
   if (oc.extra.length) h += grp(`Also off · outside slots`, oc.extra.length, oc.extra.map(v => item(v.name, v.outsideSlots === "Yes" ? "Other district" : "Extra", "info")).join(""));
   h += grp(`Alternates · working`, oc.alt.length, oc.alt.length ? oc.alt.map((v,i) => item(v.name, `Alternate ${i+1}`, "warn")).join("") : empty("No alternates."));
   h += grp(`City Shift Group ${sf.kg ?? "–"} off`, csOff.length, csOff.length ? csOff.map(r => item(r.name, "City Shift Group", "")).join("") : empty(sf.kg ? "No members in this group." : "No City Shift Group off this day."));
@@ -587,7 +597,7 @@ function vVacation(){
     const first = new Date(Date.UTC(y,m,1)).getUTCDay(), days = new Date(Date.UTC(y,m+1,0)).getUTCDate();
     let cells = DOW.map(x=>`<div class="dow">${x[0]}</div>`).join("") + "<div></div>".repeat(first);
     for (let d = 1; d <= days; d++){
-      const ds = `${y}-${pad(m+1)}-${pad(d)}`, oc = offCount(ds), n = oc.appr.length;
+      const ds = `${y}-${pad(m+1)}-${pad(d)}`, oc = offCount(ds), n = oc.used;
       const cls = ["day", n>=5?"l3":n>=3?"l2":n>=1?"l1":"", maxOff && n>=maxOff?"over":"", oc.req.length||oc.alt.length?"req":"", ds===t?"today":"", ds===vacSel?"sel":"", S().homeShift && shiftOn(ds) !== S().homeShift ? "off" : ""].filter(Boolean).join(" ");
       const kg = kellyGroup(ds);
       if (S().homeShift && shiftOn(ds) !== S().homeShift){ cells += `<div class="day blank" aria-hidden="true"></div>`; continue; }
@@ -605,10 +615,10 @@ function vVacation(){
   <section class="panel" style="grid-column:1/-1">
     <div class="legend"><span>On vacation:</span><span><i style="background:var(--soft)"></i>0</span><span><i style="background:color-mix(in srgb,var(--info) 22%,var(--surface))"></i>1–2</span><span><i style="background:color-mix(in srgb,var(--info) 45%,var(--surface))"></i>3–4</span><span><i style="background:color-mix(in srgb,var(--info) 70%,var(--surface))"></i>5–6</span><span><i style="border:2px solid var(--crit)"></i>All ${maxOff} slots full</span><span><i style="background:var(--brass);border-radius:50%;width:7px;height:7px"></i>Alternates or pending requests</span><span>${S().kelly ? "G# = City Shift Group off" : "Letter = platoon on duty"}${S().homeShift ? ` · only ${esc(S().homeShift)} platoon days are shown` : ""}</span></div>
     <div class="year">${months}</div></section>
-  <section class="panel"><div class="ph"><h3>${dowOf(vacSel)}, ${fmt(vacSel)} · ${esc(shiftOn(vacSel))} Platoon</h3>${pill(`${oc.appr.length} of ${maxOff||"–"} slots${oc.alt.length?` · ${oc.alt.length} alternate${oc.alt.length>1?"s":""}`:""}`, maxOff && oc.appr.length>=maxOff ? "crit" : "")}</div>
+  <section class="panel"><div class="ph"><h3>${dowOf(vacSel)}, ${fmt(vacSel)} · ${esc(shiftOn(vacSel))} Platoon</h3>${pill(`${oc.used} of ${maxOff||"–"} slots${oc.alt.length?` · ${oc.alt.length} alternate${oc.alt.length>1?"s":""}`:""}`, maxOff && oc.used>=maxOff ? "crit" : "")}</div>
     ${kellyGroup(vacSel) ? `<div class="hint"><b>City Shift Group ${kellyGroup(vacSel)} off:</b> ${esc(state.personnel.filter(p => String(p.csGroup) === String(kellyGroup(vacSel))).map(p => p.name).join(", ") || "no members in this group")}</div>` : ""}
     <div class="list">${oc.appr.length + oc.extra.length + oc.flex.length + oc.other.length + oc.alt.length + oc.req.length ? [
-      ...oc.appr.map((v,i) => [v, pill(`Slot ${i+1} · Off`,"ok")]),
+      ...oc.appr.map((v,i) => [v, pill(`Slot ${oc.slot.get(v)} · Off`,"ok")]),
       ...oc.extra.map(v => [v, pill(v.outsideSlots === "Yes" ? "Off · other district" : "Off · outside slots","info")]),
       ...oc.flex.map(v => [v, pill("Off · City Shift Group flex","info")]),
       ...oc.other.map(v => [v, pill("Off · "+v.type,"info")]),
@@ -696,10 +706,10 @@ function openDay(d){
   showModal(`<div class="mf" style="align-items:center"><button class="btn sm" data-a="dstep" data-n="-1" aria-label="Previous day">‹ Prev</button><span class="hint">${esc(shiftOn(d))} platoon day</span><button class="btn sm" data-a="dstep" data-n="1" aria-label="Next day">Next ›</button></div>
     <h2>${dowOf(d)}, ${fmt(d)}</h2>
     <div class="tiles">
-      <div class="tile ${maxOff && oc.appr.length>=maxOff?"crit":"info"}"><div class="k">Vacation</div><div class="v">${oc.appr.length}<span style="font-size:18px;color:var(--muted)"> / ${maxOff||"–"}</span></div><div class="s">${oc.alt.length} alternate${oc.alt.length===1?"":"s"}</div></div>
+      <div class="tile ${maxOff && oc.used>=maxOff?"crit":"info"}"><div class="k">Vacation</div><div class="v">${oc.used}<span style="font-size:18px;color:var(--muted)"> / ${maxOff||"–"}</span></div><div class="s">${oc.alt.length} alternate${oc.alt.length===1?"":"s"}</div></div>
       <div class="tile ${sf.stations.some(x=>x.on<(+x.min||0))?"crit":"ok"}"><div class="k">On duty</div><div class="v">${sf.onDuty}<span style="font-size:18px;color:var(--muted)"> / ${sf.minTotal}</span></div><div class="s">${kg?`City Shift Group ${kg} off`:"&nbsp;"}</div></div>
     </div>
-    <section><h3>Vacation slots</h3><div class="list">${oc.appr.length ? oc.appr.map((v,i)=>row(v.name, esc(leaveLabel(v)+" · "+range(v.start,v.end)), pill(`Slot ${i+1}`,"ok"), "vacations", v.id, cancelBtn(v,d))).join("") : empty("Nobody on vacation.")}</div></section>
+    <section><h3>Vacation slots</h3><div class="list">${oc.appr.length ? oc.appr.map((v,i)=>row(v.name, esc(leaveLabel(v)+" · "+range(v.start,v.end)), pill(`Slot ${oc.slot.get(v)}`,"ok"), "vacations", v.id, cancelBtn(v,d))).join("") : empty("Nobody on vacation.")}</div></section>
     ${oc.extra.length ? `<section><h3>Also off · outside the ${maxOff} slots</h3><div class="list">${oc.extra.map(v=>row(v.name, esc(leaveLabel(v)+" · "+range(v.start,v.end)), pill(v.outsideSlots === "Yes" ? "Other district" : "Extra","info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
     ${oc.other.length ? `<section><h3>Off · Admin Duty / Authorized Leave</h3><div class="list">${oc.other.map(v=>row(v.name, esc(range(v.start,v.end)), pill(v.type,"info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
     ${oc.flex.length ? `<section><h3>Off · City Shift Group flex</h3><div class="list">${oc.flex.map(v=>row(v.name, esc(range(v.start,v.end)), pill("City Shift Group flex","info"), "vacations", v.id, cancelBtn(v,d))).join("")}</div></section>` : ""}
