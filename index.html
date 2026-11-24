@@ -217,6 +217,54 @@ select.inline{width:auto}
 .guide ol,.guide ul{margin:0;padding-left:22px}
 .guide li{margin:3px 0}
 .guide code{background:var(--soft);border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:13px}
+/* Phone layout: bigger tap targets, one column, wide tables become cards */
+@media (max-width:640px){
+  .bar-in{padding:10px 12px 0;gap:4px}
+  .bar h1{font-size:22px}
+  .bar .meta{font-size:13px}
+  nav{margin:0 -12px;padding:0 12px}
+  nav a{font-size:15px;padding:10px 10px 11px}
+  main{padding:12px 10px 56px;gap:12px}
+  h2{font-size:20px}
+  .panel{padding:12px}
+  .tw{margin:0 -12px;padding:0 12px}
+  .grid{gap:12px}
+  .g2,.g3{grid-template-columns:minmax(0,1fr)!important}
+  .six{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .six>.panel,.six>:nth-child(3){grid-column:1/-1}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .tile{padding:10px 12px}
+  .tile .v{font-size:32px}
+  .stgrid{grid-template-columns:minmax(0,1fr)}
+  .mem{white-space:normal}
+  .st .row{flex-wrap:wrap}
+  .li{flex-wrap:wrap}
+  .li>.tools{margin-left:auto}
+  .btn{min-height:40px;padding:8px 14px}
+  .btn.sm{min-height:36px;padding:6px 12px}
+  .seg button{padding:9px 12px}
+  input,select,textarea{font-size:16px}
+  .head .tools{width:100%}
+  #rq{flex:1 1 160px;width:auto!important}
+  .scrim{padding:0}
+  .modal{border-radius:0;min-height:100%;padding:16px 14px 28px}
+  .year{grid-template-columns:minmax(0,1fr)}
+  .day{font-size:14px}
+  .day small{font-size:10px}
+  /* tables with 4+ columns turn into one card per row */
+  .tw.cards{margin:0;padding:0;overflow:visible}
+  .tw.cards table,.tw.cards tbody,.tw.cards tr,.tw.cards td{display:block;width:100%}
+  .tw.cards thead{display:none}
+  .tw.cards tr{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:10px;background:var(--surface)}
+  .tw.cards tr.click:active{background:var(--soft)}
+  .tw.cards td{border:0;padding:5px 0 5px 112px;display:flow-root}
+  .tw.cards td::before{content:attr(data-label);float:left;width:102px;margin-left:-112px;padding-top:2px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .tw.cards td:first-child,.tw.cards td:not([data-label]),.tw.cards td[data-label=""]{padding-left:0}
+  .tw.cards td:first-child::before,.tw.cards td:not([data-label])::before,.tw.cards td[data-label=""]::before{display:none}
+  .tw.cards td:first-child{font-size:16px;border-bottom:1px solid var(--line);margin-bottom:4px;padding-bottom:7px}
+  .tw.cards td:empty{display:none}
+  .tw.cards td[style]{min-width:0!important}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -943,9 +991,22 @@ function render(){
   document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on", a.dataset.v === view));
   const ae = document.activeElement, keepId = ae && ae.id && $("#main").contains(ae) ? ae.id : null, pos = keepId && ae.selectionStart;
   $("#main").innerHTML = VIEWS[view]();
+  cardTables();
   if (keepId){ const el = document.getElementById(keepId); if (el){ el.focus(); try{ el.setSelectionRange(pos,pos); }catch(e){} } }
 }
-function route(){ const h = location.hash.slice(1); view = VIEWS[h] ? h : "dashboard"; render(); window.scrollTo(0,0); }
+/* on phones, tables with 4+ columns show as cards: each cell gets its column heading as a label */
+function cardTables(){
+  document.querySelectorAll("#main .tw").forEach(w => {
+    const t = w.querySelector("table"); if (!t || !t.tHead) return;
+    const heads = [...t.tHead.rows[0].cells].map(c => c.textContent.trim());
+    if (heads.length < 4) return;
+    w.classList.add("cards");
+    [...t.tBodies].forEach(b => [...b.rows].forEach(r => [...r.cells].forEach(c => { if (c.colSpan === 1) c.dataset.label = heads[c.cellIndex] || ""; })));
+  });
+}
+function route(){ const h = location.hash.slice(1); view = VIEWS[h] ? h : "dashboard"; render(); window.scrollTo(0,0);
+  /* keep the selected tab in view on the scrolling tab row */
+  const n = $("#nav"), a = n && n.querySelector("a.on"); if (a && n.scrollWidth > n.clientWidth) n.scrollLeft = a.offsetLeft - (n.clientWidth - a.offsetWidth) / 2; }
 
 /* ---------- actions ---------- */
 /* which company boxes are expanded on Daily Staffing (all start collapsed) */
