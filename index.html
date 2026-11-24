@@ -126,8 +126,8 @@ details.co summary::-webkit-details-marker{display:none}
 details.co summary h3::before{content:"▸ ";color:var(--muted)}
 details.co[open] summary h3::before{content:"▾ "}
 details.co[open] summary{margin-bottom:10px}
-.crew{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--soft)}
-.mem{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-size:12px;line-height:1.35;white-space:nowrap}
+.crew{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--soft)}
+.mem{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:14px;line-height:1.4;white-space:nowrap}
 .mem small{color:var(--muted)}
 .mem.r3{background:#b3261e;color:#fff}
 .mem.r2{background:#1d7148;color:#fff}
@@ -135,6 +135,8 @@ details.co[open] summary{margin-bottom:10px}
 .mem.r5 small{color:#3a3000}
 .mem.r1{background:#111;color:#fff;border-color:#444}
 .mem.r3 small,.mem.r2 small,.mem.r1 small{color:rgba(255,255,255,.85)}
+/* paramedics (EMS licensure = Paramedic on the Roster): name letters in bright blue */
+.mem.medic b{color:#1e90ff;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 -1px 0 #fff,0 1px 0 #fff,-1px 0 0 #fff,1px 0 0 #fff}
 .mem.in{border-color:var(--info)}
 .mem[data-drag]{cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .mem.mv{outline:2px dashed var(--brass);outline-offset:1px}
@@ -475,6 +477,8 @@ function banners(){
 }
 
 const unitOf = co => (state.personnel.find(p => p.station === co) || {}).unit || "";
+/* true when the member's EMS licensure on the Roster is Paramedic */
+const isMedic = n => /paramedic/i.test((person(n) || {}).licensure || "");
 /* company designators (E03, L24, C644...) in Setup order, for the assignment dropdown */
 const coDesig = () => [...new Set(stationNames().map(n => unitOf(n) || n))].filter(Boolean);
 /* statusByName: show only the Staffed / At minimum / Short tag, right beside the company name (Daily Staffing tab) */
@@ -485,7 +489,7 @@ function stationMeters(sf, withMembers, dragDate, statusByName){
     const tag = short?pill(`Short ${min-s.on}`,"crit"):s.on===min?pill("At minimum","warn"):pill("Staffed","ok");
     const head = statusByName ? `<div class="row lead"><b>${esc(s.name)}</b>${tag}</div>` : `<div class="row"><b>${esc(s.name)}</b><span>${s.on} on duty · min ${min} ${tag}</span></div>`;
     return `<div class="st"${dragDate ? ` data-drop="${esc(s.name)}"` : ""}>${head}
-      ${statusByName ? "" : `<div class="meter" aria-hidden="true"><div class="f${short?" crit":""}" style="width:${Math.min(100,s.on/max*100)}%"></div>${min?`<div class="min" style="left:${min/max*100}%"></div>`:""}</div>`}${withMembers ? `<div class="crew">${s.rows.filter(r=>r.on).map(r=>`<span class="mem${r.inbound?" in":r.alt?" alt":""}${r.moved?" mv":""}${r.rank==="FD-03"?" r3":r.rank==="FD-02"?" r2":r.rank==="FD-01"?" r1":r.rank==="FD-05"?" r5":""}" title="${esc(r.name)}${r.rank?" · "+esc(r.rank):""}"${dragDate && !r.inbound ? ` data-drag="${esc(r.name)}" data-from="${esc(r.station)}" tabindex="0" role="button" aria-label="Move ${esc(r.name)}"` : ""}>${(()=>{ const x = [r.moved?"from "+esc(r.moved):"", (r.inbound||r.alt)?esc(r.status):""].filter(Boolean).join(" · "); return `<b>${esc(r.name)}</b>${x?` <small>${x}</small>`:""}`; })()}</span>`).join("") || `<span class="hint">Nobody on duty</span>`}</div>` : ""}</div>`;
+      ${statusByName ? "" : `<div class="meter" aria-hidden="true"><div class="f${short?" crit":""}" style="width:${Math.min(100,s.on/max*100)}%"></div>${min?`<div class="min" style="left:${min/max*100}%"></div>`:""}</div>`}${withMembers ? `<div class="crew">${s.rows.filter(r=>r.on).map(r=>`<span class="mem${r.inbound?" in":r.alt?" alt":""}${r.moved?" mv":""}${isMedic(r.name)?" medic":""}${r.rank==="FD-03"?" r3":r.rank==="FD-02"?" r2":r.rank==="FD-01"?" r1":r.rank==="FD-05"?" r5":""}" title="${esc(r.name)}${r.rank?" · "+esc(r.rank):""}${isMedic(r.name)?" · Paramedic":""}"${dragDate && !r.inbound ? ` data-drag="${esc(r.name)}" data-from="${esc(r.station)}" tabindex="0" role="button" aria-label="Move ${esc(r.name)}"` : ""}>${(()=>{ const x = [r.moved?"from "+esc(r.moved):"", (r.inbound||r.alt)?esc(r.status):""].filter(Boolean).join(" · "); return `<b>${esc(r.name)}</b>${x?` <small>${x}</small>`:""}`; })()}</span>`).join("") || `<span class="hint">Nobody on duty</span>`}</div>` : ""}</div>`;
   }).join("");
 }
 
@@ -507,7 +511,7 @@ function vDashboard(){
     ${window.wxTile ? wxTile(t) : `<div class="tile ${overdue?"crit":reps.length?"warn":"ok"}"><div class="k">Reports overdue</div><div class="v">${overdue}</div><div class="s">${reps.length-overdue} due within 7 days</div></div>`}
   </div>
   <div class="grid g2">
-    <section class="panel"><div class="ph"><h3>Staffing by company</h3><a href="#staffing">Full roster</a></div><div class="hint">Yellow = FD-05, red = FD-03, green = FD-02, black = FD-01. Blue outline = coverage in; gold outline = vacation alternate.</div>${stationMeters(sf, true)}</section>
+    <section class="panel"><div class="ph"><h3>Staffing by company</h3><a href="#staffing">Full roster</a></div><div class="hint">Yellow = FD-05, red = FD-03, green = FD-02, black = FD-01. Blue outline = coverage in; gold outline = vacation alternate. <b style="color:#1e90ff">Bright blue name</b> = paramedic.</div>${stationMeters(sf, true)}</section>
     <section class="panel"><div class="ph"><h3>Off and coverage</h3><a href="#staffing">Details</a></div>
       ${offGroups(t, sf)}</section>
   </div>
@@ -558,7 +562,7 @@ function vStaffing(){
       <button class="btn" data-a="day" data-n="1" aria-label="Next day">Next ›</button><button class="btn" data-a="day" data-n="0">${S().homeShift ? "Next shift" : "Today"}</button>
       <button class="btn pri w" data-a="add" data-c="staffing">Log staffing change</button><button class="btn w" data-a="add" data-c="vacations">Add leave</button><button class="btn w" data-a="add" data-c="training">Add training</button></div></div>
   <div class="hint">${dowOf(d)}, ${fmt(d)} · <b>${esc(sf.shift)} Platoon</b> on duty${sf.kg ? ` · City Shift Group ${sf.kg} off` : ""} · ${sf.onDuty} of ${sf.minTotal} minimum. Staffing starts from each member's shift and company on the Roster tab, then removes the City Shift Group that is off and approved leave, and adds the changes logged here.</div>
-  <section class="panel"><h3>Company summary</h3><div class="hint"><b class="w">Drag a member to another company to move them for ${fmtShort(d)} only (on a phone, press and hold, then drag), or tap a member to pick a company. Dashed outline = temporarily moved.</b> On-duty members are listed under each company. Red = FD-03, green = FD-02, black = FD-01, yellow = FD-05. Blue outline = coverage in (OT, detail, trade); gold outline = vacation alternate.</div><div class="stgrid">${stationMeters(sf, true, canWrite ? d : null, true)}</div></section>
+  <section class="panel"><h3>Company summary</h3><div class="hint"><b class="w">Drag a member to another company to move them for ${fmtShort(d)} only (on a phone, press and hold, then drag), or tap a member to pick a company. Dashed outline = temporarily moved.</b> On-duty members are listed under each company. Red = FD-03, green = FD-02, black = FD-01, yellow = FD-05. Blue outline = coverage in (OT, detail, trade); gold outline = vacation alternate. <b style="color:#1e90ff">Bright blue name</b> = paramedic.</div><div class="stgrid">${stationMeters(sf, true, canWrite ? d : null, true)}</div></section>
   <div class="grid g2" style="align-items:start">${sf.stations.map(s=>`<details class="panel co" data-co="${esc(s.name)}"${coOpen.has(s.name)?" open":""}><summary class="ph"><h3>${esc(s.name)}</h3>${pill(`${s.on} / ${s.min||0}`, s.on < (+s.min||0) ? "crit" : "ok")}</summary>
     <div class="tw"><table><thead><tr><th>Member</th><th>Unit</th><th>Position</th><th>Status</th><th></th></tr></thead><tbody>
     ${s.rows.length ? s.rows.map(r=>`<tr class="${r.on?"":"out"}"><td><b>${esc(r.name)}</b><div class="hint">${esc(r.rank||"")}</div></td><td>${esc(r.unit||"")}</td><td>${esc(r.position||"")}${RANK_TITLE[r.rank] ? `<div class="hint rt ${RANK_CLS[r.rank]}">${RANK_TITLE[r.rank]}</div>` : ""}</td><td>${pill(r.status, r.on ? (r.inbound?"info":r.alt?"":"ok") : "warn")}</td><td>${r.exId?editBtn("staffing",r.exId):""}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">Nobody assigned to this company on ${esc(sf.shift)} platoon.</td></tr>`}
