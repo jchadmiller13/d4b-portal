@@ -282,6 +282,8 @@ function homeDate(){
 }
 const stepDays = () => S().homeShift ? shifts().length : 1;
 /* +1 adds someone to the day's roster, -1 takes them off */
+/* Log staffing change: someone not on the Roster; their name is typed in the Note box */
+const OTHER = "Other member";
 const KINDS = { "Temporary move":0, "Overtime":1, "Detail in":1, "Trade in":1, "Sick":-1, "Injury":-1, "Detail out":-1, "Trade out":-1, "Other leave":-1 };
 
 function staffFor(d){
@@ -301,7 +303,7 @@ function staffFor(d){
   });
   ex.filter(x => KINDS[x.kind] > 0).forEach(x => {
     const p = person(x.name) || {};
-    rows.push({ name:x.name, rank:p.rank||"", station:x.station||p.station, unit:x.unit||p.unit, position:x.position||p.position||"", status:x.kind, on:true, inbound:true, exId:x.id });
+    rows.push({ name: x.name === OTHER && x.note ? x.note : x.name, rank:p.rank||"", station:x.station||p.station, unit:x.unit||p.unit, position:x.position||p.position||"", status:x.kind, on:true, inbound:true, exId:x.id });
   });
   const st = S().stations.map(s => { const r = rows.filter(x => x.station === s.name); return { ...s, rows:r, on:r.filter(x=>x.on).length }; });
   const stray = rows.filter(r => !stationNames().includes(r.station));
@@ -388,9 +390,9 @@ const F = {
     ["certs","Other certifications","text",{full:1}], ["notes","Notes","textarea"] ]},
   staffing:{ title:"Staffing change", fields:[
     ["date","Date","date",{req:1}], ["kind","Type","select",{opts:Object.keys(KINDS)}],
-    ["name","Member","select",{opts:()=>["",...names()],req:1}],
+    ["name","Member","select",{opts:()=>["",...names(),OTHER],req:1}],
     ["station","Covering company (for OT, detail or trade in)","select",{opts:()=>["",...stationNames()],full:1}],
-    ["unit","Unit","text"], ["position","Riding position","text"], ["note","Note","textarea"] ]},
+    ["unit","Unit","text"], ["position","Riding position","text"], ["note","Note (for Other member, type their name here)","textarea"] ]},
   vacations:{ title:"Leave request", fields:[
     ["name","Member","select",{opts:()=>["",...names()],req:1}], ["type","Leave type","select",{opts:["Vacation","Day exchange","City Shift Group flex","Holiday","Comp time","Personal","FMLA","Military","Bereavement","Admin Duty","Authorized Leave"]}],
     ["portion","Day, Night or Full","select",{opts:["Full","Day","Night"]}],
@@ -457,6 +459,7 @@ async function saveForm(){
     data[k] = v;
   }
   if (modalCtx.extraKeys.length){ data.extra = {}; modalCtx.extraKeys.forEach((k,i) => data.extra[k] = $("#x_"+i).value); }
+  if (coll === "staffing" && data.name === OTHER && !data.note){ $("#ferr").textContent = "Type the member's name in the Note box."; return; }
   if (data.end && data.start && data.end < data.start){ $("#ferr").textContent = "The end date is before the start date."; return; }
   if (coll === "vacations"){ if (data.type !== "Vacation") delete data.portion; data.shift = (person(data.name)||{}).shift || S().homeShift || ""; if (!data.added) data.added = Date.now(); }
   try {
