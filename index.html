@@ -492,8 +492,7 @@ function vDashboard(){
   const upV = state.vacations.filter(v => v.status === "Approved" && v.start > t && v.start <= addDays(t,14)).sort((a,b)=>a.start.localeCompare(b.start));
   const pend = state.vacations.filter(v => v.status === "Requested").length;
   return `${banners()}
-  <div class="head"><h2>${t === today() ? "" : "Next shift · "}${dowOf(t)}, ${fmt(t)} · ${esc(sf.shift)} Platoon${sf.kg ? ` · City Shift Group ${sf.kg} off` : ""}</h2>
-    <div class="tools w"><button class="btn" data-a="add" data-c="staffing">Log staffing change</button><button class="btn" data-a="add" data-c="vacations">Add leave</button><button class="btn pri" data-a="add" data-c="training">Add training</button></div></div>
+  <div class="head"><h2>${t === today() ? "" : "Next shift · "}${dowOf(t)}, ${fmt(t)} · ${esc(sf.shift)} Platoon${sf.kg ? ` · City Shift Group ${sf.kg} off` : ""}</h2></div>
   <div class="tiles">
     <div class="tile ${shortSt.length?"crit":"ok"}"><div class="k">On duty</div><div class="v">${sf.onDuty}<span style="font-size:20px;color:var(--muted)"> / ${sf.minTotal}</span></div><div class="s">${shortSt.length ? `${shortSt.length} compan${shortSt.length>1?"ies":"y"} below minimum` : "All companies at or above minimum"}</div></div>
     <div class="tile info"><div class="k">Off ${t === today() ? "today" : "this shift"}</div><div class="v">${off.length}</div><div class="s">${sf.rows.filter(r=>r.alt).length} vacation alternates working · ${sf.rows.filter(r=>r.inbound).length} coverage in</div></div>
@@ -550,7 +549,7 @@ function vStaffing(){
     <div class="tools"><button class="btn" data-a="day" data-n="-1" aria-label="Previous day">‹ Prev</button>
       <input type="date" id="staffDate" value="${d}" style="width:auto">
       <button class="btn" data-a="day" data-n="1" aria-label="Next day">Next ›</button><button class="btn" data-a="day" data-n="0">${S().homeShift ? "Next shift" : "Today"}</button>
-      <button class="btn pri w" data-a="add" data-c="staffing">Log change</button></div></div>
+      <button class="btn pri w" data-a="add" data-c="staffing">Log staffing change</button><button class="btn w" data-a="add" data-c="vacations">Add leave</button><button class="btn w" data-a="add" data-c="training">Add training</button></div></div>
   <div class="hint">${dowOf(d)}, ${fmt(d)} · <b>${esc(sf.shift)} Platoon</b> on duty${sf.kg ? ` · City Shift Group ${sf.kg} off` : ""} · ${sf.onDuty} of ${sf.minTotal} minimum. Staffing starts from each member's shift and company on the Roster tab, then removes the City Shift Group that is off and approved leave, and adds the changes logged here.</div>
   <section class="panel"><h3>Company summary</h3><div class="hint"><b class="w">Drag a member to another company to move them for ${fmtShort(d)} only (on a phone, press and hold, then drag), or tap a member to pick a company. Dashed outline = temporarily moved.</b> On-duty members are listed under each company. Red = FD-03, green = FD-02, black = FD-01, yellow = FD-05. Blue outline = coverage in (OT, detail, trade); gold outline = vacation alternate.</div><div class="stgrid">${stationMeters(sf, true, canWrite ? d : null, true)}</div></section>
   <div class="grid g2">${sf.stations.map(s=>`<section class="panel"><div class="ph"><h3>${esc(s.name)}</h3>${pill(`${s.on} / ${s.min||0}`, s.on < (+s.min||0) ? "crit" : "ok")}</div>
